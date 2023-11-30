@@ -304,19 +304,14 @@ app.post("/fieldNameDetails", async (req, res) => {
 
     try {
 
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : "new vacancy"
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
         let fieldDetails = req.body.fieldDetails ? req.body.fieldDetails : []
-        // let field_name = req.body.field_name ? req.body.field_name : ""
-        // let field_type = req.body.field_type ? req.body.field_type : ""
-        // let place_holder = req.body.place_holder ? req.body.place_holder : ""
+        
         
         let saveData = {
         
-            vacancy_type: vacancy_type,
-            fieldDetails:fieldDetails,
-            // field_name: field_name,
-            // field_type: field_type,
-            // place_holder: place_holder,
+            vacancy_type : vacancy_type,
+            fieldDetails : fieldDetails,
         
         }
         let result = await fieldName.create(saveData)
@@ -353,21 +348,13 @@ app.post("/formStepDetails", async (req, res) => {
 
     try {
 
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : "new vacancy"
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
         let step_detail = req.body.step_detail ? req.body.step_detail : []
-        // let step_name = req.body.step_name ? req.body.step_name : ""
-        // let field_name = req.body.field_name ? req.body.field_name : ""
-        // let field_type = req.body.field_type ? req.body.field_type : ""
-        // let place_holder = req.body.place_holder ? req.body.place_holder : ""
         
         let saveData = {
         
-            vacancy_type: vacancy_type,
-            step_detail: step_detail,
-            // step_name: step_name,
-            // field_name: field_name,
-            // field_type: field_type,
-            // pasplace_holdersword: place_holder,
+            vacancy_type : vacancy_type,
+            step_detail : step_detail,
         
         }
         let result = await formStepDetails.create(saveData)
@@ -404,7 +391,7 @@ app.post("/mrfApprovalNeed", async (req, res) => {
 
     try {
 
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : "new vacancy"
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
         let department_name = req.body.department_name ? req.body.department_name : ""
         let list_authorities = req.body.list_authorities ? req.body.list_authorities : ""
         
@@ -484,7 +471,6 @@ app.get("/getFormFieldDetails", upload, async (req, res) => {
                 
                 }
             },
-
 
         ])
         if (user === null) {

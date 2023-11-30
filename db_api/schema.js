@@ -63,16 +63,18 @@ const formStepsSchema = new mongoose.Schema({
 
     vacancy_type: String,
 
-    step_detail: [{
-        step_name: String,
-        step_field_details_: [
-            {
-                field_name: String,
-                field_type: String,
-                place_holder: String
-            }
-        ],
-    }],
+    step_detail: [
+        {
+            step_name: String,
+            step_field_details_: [
+                {
+                    field_name: String,
+                    field_type: String,
+                    place_holder: String
+                }
+            ],
+        }
+    ],
 
     created: { type: Date, default: Date.now },
     modified: { type: Date, default: Date.now }
