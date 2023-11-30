@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 require("./db_api/config")
-const { Registration, FeeDetails, ClassDetails } = require("./db_api/schema")
+const { Registration, FeeDetails, ClassDetails,  fieldName,formStepDetails,approvalNeed } = require("./db_api/schema")
 
 
 //>>>>>>>>>funtions start......................
@@ -296,6 +296,154 @@ app.get("/getUserDetails", upload, async (req, res) => {
     }
 
 });
+
+/********************* Glueple MRF Form Details API ************************************ */
+
+app.post("/fieldNameDetails", async (req, res) => {
+    console.log("http://localhost:2000/fieldNameDetails")
+
+    try {
+
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
+        let fieldDetails = req.body.fieldDetails ? req.body.fieldDetails : []
+        // let field_name = req.body.field_name ? req.body.field_name : ""
+        // let field_type = req.body.field_type ? req.body.field_type : ""
+        // let place_holder = req.body.place_holder ? req.body.place_holder : ""
+        
+        let saveData = {
+        
+            vacancy_type: vacancy_type,
+            fieldDetails:fieldDetails,
+            // field_name: field_name,
+            // field_type: field_type,
+            // place_holder: place_holder,
+        
+        }
+        let result = await fieldName.create(saveData)
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Saved Successfully",
+                data: result
+            })
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Something went wrong",
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
+app.post("/formStepDetails", async (req, res) => {
+    console.log("http://localhost:2000/formStepDetails")
+
+    try {
+
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
+        let step_detail = req.body.step_detail ? req.body.step_detail : {}
+        // let step_name = req.body.step_name ? req.body.step_name : ""
+        // let field_name = req.body.field_name ? req.body.field_name : ""
+        // let field_type = req.body.field_type ? req.body.field_type : ""
+        // let place_holder = req.body.place_holder ? req.body.place_holder : ""
+        
+        let saveData = {
+        
+            vacancy_type: vacancy_type,
+            step_detail: step_detail,
+            // step_name: step_name,
+            // field_name: field_name,
+            // field_type: field_type,
+            // pasplace_holdersword: place_holder,
+        
+        }
+        let result = await formStepDetails.create(saveData)
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Saved Successfully",
+                data: result
+            })
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Something went wrong",
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
+app.post("/mrfApprovalNeed", async (req, res) => {
+    console.log("http://localhost:2000/mrfApprovalNeed")
+
+    try {
+
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
+        let department_name = req.body.department_name ? req.body.department_name : ""
+        let list_authorities = req.body.list_authorities ? req.body.list_authorities : ""
+        
+        let saveData = {
+        
+            vacancy_type: vacancy_type,
+            department_name: department_name,
+            list_authorities: list_authorities,
+        
+        }
+        let result = await approvalNeed.create(saveData)
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Saved Successfully",
+                data: result
+            })
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Something went wrong",
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
 
 
 
