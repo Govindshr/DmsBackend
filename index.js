@@ -354,7 +354,7 @@ app.post("/formStepDetails", async (req, res) => {
     try {
 
         let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
-        let step_detail = req.body.step_detail ? req.body.step_detail : {}
+        let step_detail = req.body.step_detail ? req.body.step_detail : []
         // let step_name = req.body.step_name ? req.body.step_name : ""
         // let field_name = req.body.field_name ? req.body.field_name : ""
         // let field_type = req.body.field_type ? req.body.field_type : ""
