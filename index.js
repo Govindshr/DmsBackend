@@ -304,7 +304,7 @@ app.post("/fieldNameDetails", async (req, res) => {
 
     try {
 
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : "new vacancy"
         let fieldDetails = req.body.fieldDetails ? req.body.fieldDetails : []
         // let field_name = req.body.field_name ? req.body.field_name : ""
         // let field_type = req.body.field_type ? req.body.field_type : ""
@@ -353,7 +353,7 @@ app.post("/formStepDetails", async (req, res) => {
 
     try {
 
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : "new vacancy"
         let step_detail = req.body.step_detail ? req.body.step_detail : []
         // let step_name = req.body.step_name ? req.body.step_name : ""
         // let field_name = req.body.field_name ? req.body.field_name : ""
@@ -404,7 +404,7 @@ app.post("/mrfApprovalNeed", async (req, res) => {
 
     try {
 
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
+        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : "new vacancy"
         let department_name = req.body.department_name ? req.body.department_name : ""
         let list_authorities = req.body.list_authorities ? req.body.list_authorities : ""
         
@@ -430,6 +430,68 @@ app.post("/mrfApprovalNeed", async (req, res) => {
                 code: 404,
                 message: "Something went wrong",
             })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
+
+app.get("/formFieldDetails", upload, async (req, res) => {
+    console.log("http://localhost:2000/formFieldDetails")
+
+    try {
+
+        // let email = req.body.email ? req.body.email : ""
+        // let user = await fieldName.find({})
+        // console.log(user)
+        let user = await fieldName.aggregate([
+
+            { "$match": { } },
+            {
+                "$lookup": {
+                    from: "form_steps",
+                    localField: "vacancy_type",
+                    foreignField: "vacancy_type",
+                    as: "steps_data"
+                }
+            },
+            {
+                "$lookup": {
+                    from: "approvals",
+                    localField: "vacancy_type",
+                    foreignField: "vacancy_type",
+                    as: "approvals_data"
+                }
+            },
+            { "$unwind": "$steps_data" },
+            { "$unwind": "$approvals_data" },
+
+
+        ])
+        if (user === null) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "User not found.",
+            })
+
+        }
+        else {
+                res.status(201).json({
+                    error: false,
+                    code: 201,
+                    message: "Data fetched",
+                    result: user
+                })
         }
 
     } catch (error) {
