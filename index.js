@@ -445,17 +445,14 @@ app.post("/mrfApprovalNeed", async (req, res) => {
 });
 
 
-app.get("/formFieldDetails", upload, async (req, res) => {
-    console.log("http://localhost:2000/formFieldDetails")
+app.get("/getFormFieldDetails", upload, async (req, res) => {
+    console.log("http://localhost:2000/getFormFieldDetails")
 
     try {
 
-        // let email = req.body.email ? req.body.email : ""
-        // let user = await fieldName.find({})
-        // console.log(user)
         let user = await fieldName.aggregate([
 
-            { "$match": { } },
+            { "$match": { vacancy_type : "new vacancy" } },
             {
                 "$lookup": {
                     from: "form_steps",
@@ -474,6 +471,19 @@ app.get("/formFieldDetails", upload, async (req, res) => {
             },
             { "$unwind": "$steps_data" },
             { "$unwind": "$approvals_data" },
+            {
+                "$project": {
+                    "_id": 1,
+                    "vacancy_type": 1,
+                    "fieldDetails": 1,
+                    "steps_data.vacancy_type":1,
+                    "steps_data.step_detail":1,
+                    "approvals_data.vacancy_type":1,
+                    "approvals_data.department_name":1,
+                    "approvals_data.list_authorities":1,
+                
+                }
+            },
 
 
         ])
