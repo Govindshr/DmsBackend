@@ -436,10 +436,10 @@ app.get("/getFormFieldDetails", upload, async (req, res) => {
     console.log("http://localhost:2000/getFormFieldDetails")
 
     try {
-
+        let vacancy_type = req.body.vacancy_type
         let user = await fieldName.aggregate([
 
-            { "$match": { vacancy_type : "new vacancy" } },
+            { "$match": { vacancy_type : vacancy_type } },
             {
                 "$lookup": {
                     from: "form_steps",

@@ -100,8 +100,8 @@ module.exports = {
     Registration,
     FeeDetails,
     ClassDetails,
-
-    fieldName,
+ /**************glueple*************/ 
+    fieldName, 
     formStepDetails,
     approvalNeed,
 
