@@ -432,6 +432,41 @@ app.post("/mrfApprovalNeed", async (req, res) => {
 });
 
 
+app.get("/getVacancyType", upload, async (req, res) => {
+    console.log("http://localhost:2000/getVacancyType")
+
+    try {
+    
+        let user = await fieldName.find({},{vacancy_type:1})
+        if (user === null) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "User not found.",
+            })
+
+        }
+        else {
+                res.status(201).json({
+                    error: false,
+                    code: 201,
+                    message: "Data fetched",
+                    result: user
+                })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
 app.get("/getFormFieldDetails", upload, async (req, res) => {
     console.log("http://localhost:2000/getFormFieldDetails")
 
