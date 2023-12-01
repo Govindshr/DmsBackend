@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 require("./db_api/config")
-const { Registration, FeeDetails, ClassDetails,  fieldName,formStepDetails,approvalNeed } = require("./db_api/schema")
+const { Registration, FeeDetails, ClassDetails, fieldName, formStepDetails, approvalNeed } = require("./db_api/schema")
 
 
 //>>>>>>>>>funtions start......................
@@ -61,7 +61,7 @@ app.post("/registration", upload, async (req, res) => {
         let mobile_number = req.body.mobile_number ? req.body.mobile_number : ""
         let email = req.body.email ? req.body.email : ""
         let password = req.body.password ? req.body.password : ""
-        
+
 
         // let file = profile_image.fieldname + "-" + Date.now() + ".jpg"
         let bPassword = await bcryptPassword(password)
@@ -71,7 +71,7 @@ app.post("/registration", upload, async (req, res) => {
             mobile_number: mobile_number,
             email: email,
             password: bPassword,
-        
+
 
         }
         let result = await Registration.create(saveData)
@@ -266,7 +266,7 @@ app.get("/getUserDetails", upload, async (req, res) => {
     try {
 
         // let email = req.body.email ? req.body.email : ""
-        let user = await Registration.find({},{_id:0,name:1,email:1,mobile_number:1,address:1})
+        let user = await Registration.find({}, { _id: 0, name: 1, email: 1, mobile_number: 1, address: 1 })
         // console.log(user)
         if (user === null) {
             res.status(404).json({
@@ -277,12 +277,12 @@ app.get("/getUserDetails", upload, async (req, res) => {
 
         }
         else {
-                res.status(201).json({
-                    error: false,
-                    code: 201,
-                    message: "Data fetched",
-                    result: user
-                })
+            res.status(201).json({
+                error: false,
+                code: 201,
+                message: "Data fetched",
+                result: user
+            })
         }
 
     } catch (error) {
@@ -306,13 +306,13 @@ app.post("/fieldNameDetails", async (req, res) => {
 
         let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
         let fieldDetails = req.body.fieldDetails ? req.body.fieldDetails : []
-        
-        
+
+
         let saveData = {
-        
-            vacancy_type : vacancy_type,
-            fieldDetails : fieldDetails,
-        
+
+            vacancy_type: vacancy_type,
+            fieldDetails: fieldDetails,
+
         }
         let result = await fieldName.create(saveData)
 
@@ -350,12 +350,12 @@ app.post("/formStepDetails", async (req, res) => {
 
         let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
         let step_detail = req.body.step_detail ? req.body.step_detail : []
-        
+
         let saveData = {
-        
-            vacancy_type : vacancy_type,
-            step_detail : step_detail,
-        
+
+            vacancy_type: vacancy_type,
+            step_detail: step_detail,
+
         }
         let result = await formStepDetails.create(saveData)
 
@@ -394,13 +394,13 @@ app.post("/mrfApprovalNeed", async (req, res) => {
         let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
         let department_name = req.body.department_name ? req.body.department_name : ""
         let list_authorities = req.body.list_authorities ? req.body.list_authorities : ""
-        
+
         let saveData = {
-        
+
             vacancy_type: vacancy_type,
             department_name: department_name,
             list_authorities: list_authorities,
-        
+
         }
         let result = await approvalNeed.create(saveData)
 
@@ -436,9 +436,11 @@ app.get("/getVacancyType", upload, async (req, res) => {
     console.log("http://localhost:2000/getVacancyType")
 
     try {
-    
-        let user = await fieldName.find({},{vacancy_type:1})
+
+        let user = await fieldName.find({}, { vacancy_type: 1 })
+
         if (user === null) {
+
             res.status(404).json({
                 error: true,
                 code: 404,
@@ -447,12 +449,12 @@ app.get("/getVacancyType", upload, async (req, res) => {
 
         }
         else {
-                res.status(201).json({
-                    error: false,
-                    code: 201,
-                    message: "Data fetched",
-                    result: user
-                })
+            res.status(201).json({
+                error: false,
+                code: 201,
+                message: "Data fetched",
+                result: user
+            })
         }
 
     } catch (error) {
@@ -467,14 +469,14 @@ app.get("/getVacancyType", upload, async (req, res) => {
 
 });
 
-app.get("/getFormFieldDetails", upload, async (req, res) => {
+app.post("/getFormFieldDetails", upload, async (req, res) => {
     console.log("http://localhost:2000/getFormFieldDetails")
 
     try {
         let vacancy_type = req.body.vacancy_type
         let user = await fieldName.aggregate([
 
-            { "$match": { vacancy_type : vacancy_type } },
+            { "$match": { vacancy_type: vacancy_type } },
             {
                 "$lookup": {
                     from: "form_steps",
@@ -495,18 +497,18 @@ app.get("/getFormFieldDetails", upload, async (req, res) => {
             { "$unwind": "$approvals_data" },
             {
                 "$project": {
+
                     "_id": 1,
                     "vacancy_type": 1,
                     "fieldDetails": 1,
-                    "steps_data.vacancy_type":1,
-                    "steps_data.step_detail":1,
-                    "approvals_data.vacancy_type":1,
-                    "approvals_data.department_name":1,
-                    "approvals_data.list_authorities":1,
-                
+                    "steps_data.vacancy_type": 1,
+                    "steps_data.step_detail": 1,
+                    "approvals_data.vacancy_type": 1,
+                    "approvals_data.department_name": 1,
+                    "approvals_data.list_authorities": 1,
+
                 }
             },
-
         ])
         if (user === null) {
             res.status(404).json({
@@ -514,15 +516,14 @@ app.get("/getFormFieldDetails", upload, async (req, res) => {
                 code: 404,
                 message: "User not found.",
             })
-
         }
         else {
-                res.status(201).json({
-                    error: false,
-                    code: 201,
-                    message: "Data fetched",
-                    result: user
-                })
+            res.status(201).json({
+                error: false,
+                code: 201,
+                message: "Data fetched",
+                result: user
+            })
         }
 
     } catch (error) {
