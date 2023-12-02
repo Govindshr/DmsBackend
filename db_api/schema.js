@@ -86,8 +86,13 @@ formStepDetails = mongoose.model("form_steps", formStepsSchema);
 const approvalNeedSchema = new mongoose.Schema({
 
     vacancy_type: String,
-    department_name: String,
-    list_authorities: String,
+    approved_by : [
+        {
+            department_name: String,
+            list_authorities: String,
+            status:{ type: Number, default: 0 }
+        }
+    ],
     created: { type: Date, default: Date.now },
     modified: { type: Date, default: Date.now }
 

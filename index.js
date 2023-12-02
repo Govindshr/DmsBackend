@@ -392,14 +392,13 @@ app.post("/mrfApprovalNeed", async (req, res) => {
     try {
 
         let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
-        let department_name = req.body.department_name ? req.body.department_name : ""
-        let list_authorities = req.body.list_authorities ? req.body.list_authorities : ""
+        let approved_by = req.body.approved_by ? req.body.approved_by : []
+    
 
         let saveData = {
 
             vacancy_type: vacancy_type,
-            department_name: department_name,
-            list_authorities: list_authorities,
+            approved_by: approved_by,
 
         }
         let result = await approvalNeed.create(saveData)
