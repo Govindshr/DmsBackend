@@ -476,14 +476,14 @@ app.post("/getFormFieldDetails", upload, async (req, res) => {
         let user = await fieldName.aggregate([
 
             { "$match": { vacancy_type: vacancy_type } },
-            {
-                "$lookup": {
-                    from: "form_steps",
-                    localField: "vacancy_type",
-                    foreignField: "vacancy_type",
-                    as: "steps_data"
-                }
-            },
+            // {
+            //     "$lookup": {
+            //         from: "form_steps",
+            //         localField: "vacancy_type",
+            //         foreignField: "vacancy_type",
+            //         as: "steps_data"
+            //     }
+            // },
             {
                 "$lookup": {
                     from: "approvals",
@@ -492,7 +492,7 @@ app.post("/getFormFieldDetails", upload, async (req, res) => {
                     as: "approvals_data"
                 }
             },
-            { "$unwind": "$steps_data" },
+            // { "$unwind": "$steps_data" },
             { "$unwind": "$approvals_data" },
             {
                 "$project": {
@@ -500,10 +500,57 @@ app.post("/getFormFieldDetails", upload, async (req, res) => {
                     "_id": 1,
                     "vacancy_type": 1,
                     "fieldDetails": 1,
-                    "steps_data.vacancy_type": 1,
-                    "steps_data.step_detail": 1,
+                    // "steps_data.vacancy_type": 1,
+                    // "steps_data.step_detail": 1,
                     "approvals_data.vacancy_type": 1,
                     "approvals_data.approved_by": 1,
+
+                }
+            },
+        ])
+        if (user === null) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "User not found.",
+            })
+        }
+        else {
+            res.status(201).json({
+                error: false,
+                code: 201,
+                message: "Data fetched",
+                result: user
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
+app.post("/getFormStepFieldDetails", upload, async (req, res) => {
+    console.log("http://localhost:2000/getFormStepFieldDetails")
+
+    try {
+        let vacancy_type = req.body.vacancy_type
+        let user = await formStepDetails.aggregate([
+
+            { "$match": { vacancy_type: vacancy_type } },
+           
+            {
+                "$project": {
+
+                    "_id": 1,
+                    "vacancy_type": 1,
+                    "step_detail": 1,
 
                 }
             },
