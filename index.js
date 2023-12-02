@@ -503,8 +503,7 @@ app.post("/getFormFieldDetails", upload, async (req, res) => {
                     "steps_data.vacancy_type": 1,
                     "steps_data.step_detail": 1,
                     "approvals_data.vacancy_type": 1,
-                    "approvals_data.department_name": 1,
-                    "approvals_data.list_authorities": 1,
+                    "approvals_data.approved_by": 1,
 
                 }
             },
