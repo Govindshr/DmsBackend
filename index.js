@@ -349,12 +349,14 @@ app.post("/formStepDetails", async (req, res) => {
     try {
 
         let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
-        let step_detail = req.body.step_detail ? req.body.step_detail : []
+        let step_name = req.body.step_name ? req.body.step_name : ""
+        let step_field_details = req.body.step_field_details ? req.body.step_field_details : []
 
         let saveData = {
 
             vacancy_type: vacancy_type,
-            step_detail: step_detail,
+            step_name: step_name,
+            step_field_details: step_field_details,
 
         }
         let result = await formStepDetails.create(saveData)
@@ -550,7 +552,8 @@ app.post("/getFormStepFieldDetails", upload, async (req, res) => {
 
                     "_id": 1,
                     "vacancy_type": 1,
-                    "step_detail": 1,
+                    "step_name": 1,
+                    "step_field_details": 1,
 
                 }
             },
