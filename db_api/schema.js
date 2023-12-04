@@ -99,6 +99,15 @@ const approvalNeedSchema = new mongoose.Schema({
 });
 approvalNeed = mongoose.model("approvals", approvalNeedSchema);
 
+const MRFschema = new mongoose.Schema({
+
+    mrfFormData:[],
+    created: { type: Date, default: Date.now },
+    modified: { type: Date, default: Date.now }
+
+});
+mrf_details = mongoose.model("mrf_details", MRFschema);
+
 
 
 module.exports = {
@@ -109,5 +118,6 @@ module.exports = {
     fieldName, 
     formStepDetails,
     approvalNeed,
+    mrf_details,
 
 }

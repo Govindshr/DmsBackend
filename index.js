@@ -12,7 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 require("./db_api/config")
-const { Registration, FeeDetails, ClassDetails, fieldName, formStepDetails, approvalNeed } = require("./db_api/schema")
+const { Registration, FeeDetails, ClassDetails, fieldName, formStepDetails, approvalNeed, mrf_details } = require("./db_api/schema")
 
 
 //>>>>>>>>>funtions start......................
@@ -583,6 +583,153 @@ app.post("/getFormStepFieldDetails", upload, async (req, res) => {
 
 });
 
+
+app.post("/saveMrfFormDatails", upload, async (req, res) => {
+    console.log("http://localhost:2000/saveMrfFormDatails")
+
+    try {
+        let vacancy_type = req.body.vacancy_type
+        let fieldData = await fieldName.aggregate([
+
+            { "$match": { vacancy_type: vacancy_type } },
+            // {
+            //     "$lookup": {
+            //         from: "form_steps",
+            //         localField: "vacancy_type",
+            //         foreignField: "vacancy_type",
+            //         as: "steps_data"
+            //     }
+            // },
+            {
+                "$lookup": {
+                    from: "approvals",
+                    localField: "vacancy_type",
+                    foreignField: "vacancy_type",
+                    as: "approvals_data"
+                }
+            },
+            // { "$unwind": "$steps_data" },
+            { "$unwind": "$approvals_data" },
+            {
+                "$project": {
+
+                    "_id": 1,
+                    "vacancy_type": 1,
+                    "fieldDetails": 1,
+                    // "steps_data.vacancy_type": 1,
+                    // "steps_data.step_detail": 1,
+                    "approvals_data.vacancy_type": 1,
+                    "approvals_data.approved_by": 1,
+
+                }
+            },
+        ])
+        if (fieldData === null) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "fieldData not found.",
+            })
+        }
+        else {
+            // console.log(JSON.stringify(fieldData),"111111111111111111111111111")
+
+            let fieldArr = []
+            for(i=0;i<fieldData[0].fieldDetails.length;i++){
+                fieldArr.push(fieldData[0].fieldDetails[i].field_name)
+            }
+            console.log(fieldArr,"222222222222222222222222222222222")
+
+            
+            let approvalFieldArr = []
+            for(i=0;i<fieldData[0].approvals_data.approved_by.length;i++){
+                approvalFieldArr.push(fieldData[0].approvals_data.approved_by[i].department_name)
+            }
+            console.log(approvalFieldArr,"apppppppppppppppppppppppppppp")
+            
+            let approvalNameArr = []
+            for(i=0;i<fieldData[0].approvals_data.approved_by.length;i++){
+                approvalNameArr.push(fieldData[0].approvals_data.approved_by[i].list_authorities)
+            }
+            console.log(approvalNameArr,"apppnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
+            
+            let stepData = await formStepDetails.find({ vacancy_type: vacancy_type })
+
+            // console.log(JSON.stringify(stepData),"stepppppppppppppdataaaaaaaaaaaaaaa")
+            let stepFieldArr = []
+            for(j=0;j<stepData.length;j++){
+            stepFieldArr.push({step_name:stepData[j].step_detail[0].step_name})
+            for(i=0;i<stepData[j].step_detail[0].step_field_details_.length;i++){
+                stepFieldArr.push({step_field_name:stepData[j].step_detail[0].step_field_details_[i].field_name})
+            }
+            console.log(stepFieldArr,"sssssssssssssssssssssssssssssssssssss")
+        }
+            // console.log(stepData[0].approvals_data.approved_by[0].department_name,"apppppppppppppppppppppppppppp")
+
+
+
+            res.status(201).json({
+                error: false,
+                code: 201,
+                message: "Data fetched",
+                result: fieldData
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
+app.post("/saveMRF", async (req, res) => {
+    console.log("http://localhost:2000/saveMRF")
+
+    try {
+
+        
+        let mrfFormData = req.body.mrfFormData ? req.body.mrfFormData : []
+
+
+        let saveData = {
+
+            mrfFormData: mrfFormData,
+
+        }
+        let result = await mrf_details.create(saveData)
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Saved Successfully",
+                data: result
+            })
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Something went wrong",
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
 
 
 
