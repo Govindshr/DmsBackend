@@ -99,15 +99,35 @@ const approvalNeedSchema = new mongoose.Schema({
 });
 approvalNeed = mongoose.model("approvals", approvalNeedSchema);
 
-const MRFschema = new mongoose.Schema({
+const MRFformSchema = new mongoose.Schema({
 
+    vacancy_type: String,
     mrfFormData:[],
     created: { type: Date, default: Date.now },
     modified: { type: Date, default: Date.now }
 
 });
-mrf_details = mongoose.model("mrf_details", MRFschema);
+mrf_form_details = mongoose.model("mrf_form_details", MRFformSchema);
 
+const MRFstepSchema = new mongoose.Schema({
+
+    vacancy_type: String,
+    mrfStepData:[],
+    created: { type: Date, default: Date.now },
+    modified: { type: Date, default: Date.now }
+
+});
+mrf_step_details = mongoose.model("mrf_step_details", MRFstepSchema);
+
+const MRFapprovalSchema = new mongoose.Schema({
+
+    vacancy_type: String,
+    mrfApprovalData:[],
+    created: { type: Date, default: Date.now },
+    modified: { type: Date, default: Date.now }
+
+});
+mrf_approval_details = mongoose.model("mrf_approval_details", MRFapprovalSchema);
 
 
 module.exports = {
@@ -118,6 +138,8 @@ module.exports = {
     fieldName, 
     formStepDetails,
     approvalNeed,
-    mrf_details,
+    mrf_form_details,
+    mrf_step_details,
+    mrf_approval_details,
 
 }
