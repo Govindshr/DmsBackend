@@ -12,9 +12,11 @@ app.use(express.json());
 app.use(cors());
 
 require("./db_api/config")
-const { Registration, FeeDetails, ClassDetails, fieldName, formStepDetails, approvalNeed, mrf_form_details, mrf_step_details, mrf_approval_details } = require("./db_api/schema")
+const { Registration, FeeDetails, ClassDetails, OrderDetails, SweetOrderDetails } = require("./db_api/schema")
 
-
+app.listen((2025), () => {
+    console.log("app is running on port 2025")
+})
 //>>>>>>>>>funtions start......................
 
 
@@ -297,37 +299,35 @@ app.get("/getUserDetails", upload, async (req, res) => {
 
 });
 
-/********************* Glueple MRF Form Details API ************************************ */
+/********************* Govind misthan bhandar API ************************************ */
 
-app.post("/fieldNameDetails", async (req, res) => {
-    console.log("http://localhost:2000/fieldNameDetails")
+app.post("/order_details", upload, async (req, res) => {
+    console.log("http://localhost:2025/order_details")
 
     try {
 
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
-        let fieldDetails = req.body.fieldDetails ? req.body.fieldDetails : []
-
+        let name = req.body.name ? req.body.name : ""
+        let price = req.body.price ? req.body.price : ""
 
         let saveData = {
-
-            vacancy_type: vacancy_type,
-            fieldDetails: fieldDetails,
+            name: name,
+            price: price,
 
         }
-        let result = await fieldName.create(saveData)
+        let result = await OrderDetails.create(saveData)
 
         if (result) {
             res.status(200).json({
                 error: false,
                 code: 200,
-                message: "Saved Successfully",
+                message: "Class Details Saved Successfully",
                 data: result
             })
         } else {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "Something went wrong",
+                message: "Class Details Not Saved",
             })
         }
 
@@ -343,107 +343,19 @@ app.post("/fieldNameDetails", async (req, res) => {
 
 });
 
-app.post("/formStepDetails", async (req, res) => {
-    console.log("http://localhost:2000/formStepDetails")
+app.get("/getOrderDetails", upload, async (req, res) => {
+    console.log("http://localhost:2025/getOrderDetails")
 
     try {
 
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
-        let step_detail = req.body.step_detail ? req.body.step_detail : []
-
-        let saveData = {
-
-            vacancy_type: vacancy_type,
-            step_detail: step_detail,
-
-        }
-        let result = await formStepDetails.create(saveData)
-
-        if (result) {
-            res.status(200).json({
-                error: false,
-                code: 200,
-                message: "Saved Successfully",
-                data: result
-            })
-        } else {
+        // let email = req.body.email ? req.body.email : ""
+        let Order = await OrderDetails.find()
+        // console.log(Order)
+        if (Order === null) {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "Something went wrong",
-            })
-        }
-
-    } catch (error) {
-        console.log(error)
-        res.status(400).json({
-            error: true,
-            code: 400,
-            message: "sonthing went worng",
-            data: error
-        })
-    }
-
-});
-
-app.post("/mrfApprovalNeed", async (req, res) => {
-    console.log("http://localhost:2000/mrfApprovalNeed")
-
-    try {
-
-        let vacancy_type = req.body.vacancy_type ? req.body.vacancy_type : ""
-        let approved_by = req.body.approved_by ? req.body.approved_by : []
-    
-
-        let saveData = {
-
-            vacancy_type: vacancy_type,
-            approved_by: approved_by,
-
-        }
-        let result = await approvalNeed.create(saveData)
-
-        if (result) {
-            res.status(200).json({
-                error: false,
-                code: 200,
-                message: "Saved Successfully",
-                data: result
-            })
-        } else {
-            res.status(404).json({
-                error: true,
-                code: 404,
-                message: "Something went wrong",
-            })
-        }
-
-    } catch (error) {
-        console.log(error)
-        res.status(400).json({
-            error: true,
-            code: 400,
-            message: "sonthing went worng",
-            data: error
-        })
-    }
-
-});
-
-
-app.get("/getVacancyType", upload, async (req, res) => {
-    console.log("http://localhost:2000/getVacancyType")
-
-    try {
-
-        let user = await fieldName.find({}, { vacancy_type: 1 })
-
-        if (user === null) {
-
-            res.status(404).json({
-                error: true,
-                code: 404,
-                message: "User not found.",
+                message: "Order not found.",
             })
 
         }
@@ -452,7 +364,7 @@ app.get("/getVacancyType", upload, async (req, res) => {
                 error: false,
                 code: 201,
                 message: "Data fetched",
-                result: user
+                result: Order
             })
         }
 
@@ -468,59 +380,33 @@ app.get("/getVacancyType", upload, async (req, res) => {
 
 });
 
-app.post("/getFormFieldDetails", upload, async (req, res) => {
-    console.log("http://localhost:2000/getFormFieldDetails")
+app.post("/edit_order_details", async (req, res) => {
+    console.log("http://localhost:2025/edit_order_details")
 
     try {
-        let vacancy_type = req.body.vacancy_type
-        let user = await fieldName.aggregate([
 
-            { "$match": { vacancy_type: vacancy_type } },
-            // {
-            //     "$lookup": {
-            //         from: "form_steps",
-            //         localField: "vacancy_type",
-            //         foreignField: "vacancy_type",
-            //         as: "steps_data"
-            //     }
-            // },
-            {
-                "$lookup": {
-                    from: "approvals",
-                    localField: "vacancy_type",
-                    foreignField: "vacancy_type",
-                    as: "approvals_data"
-                }
-            },
-            // { "$unwind": "$steps_data" },
-            { "$unwind": "$approvals_data" },
-            {
-                "$project": {
+        let order_id = req.body.order_id ? req.body.order_id : ""
 
-                    "_id": 1,
-                    "vacancy_type": 1,
-                    "fieldDetails": 1,
-                    // "steps_data.vacancy_type": 1,
-                    // "steps_data.step_detail": 1,
-                    "approvals_data.vacancy_type": 1,
-                    "approvals_data.approved_by": 1,
+        let orderData = await OrderDetails.findOne({ _id: new ObjectId(order_id) })
+        let updateData = {
+            name: req.body.name ? req.body.name : orderData.name,
+            price: req.body.price ? req.body.price : orderData.price
 
-                }
-            },
-        ])
-        if (user === null) {
+        }
+        let result = await OrderDetails.updateOne({ _id: new ObjectId(order_id) }, { $set: updateData })
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Class Details Saved Successfully",
+                data: result
+            })
+        } else {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "User not found.",
-            })
-        }
-        else {
-            res.status(201).json({
-                error: false,
-                code: 201,
-                message: "Data fetched",
-                result: user
+                message: "Class Details Not Saved",
             })
         }
 
@@ -536,282 +422,1171 @@ app.post("/getFormFieldDetails", upload, async (req, res) => {
 
 });
 
-app.post("/getFormStepFieldDetails", upload, async (req, res) => {
-    console.log("http://localhost:2000/getFormStepFieldDetails")
+
+app.post("/sweet_order_details", async (req, res) => {
+    console.log("http://localhost:2025/sweet_order_details");
 
     try {
-        let vacancy_type = req.body.vacancy_type
-        let user = await formStepDetails.aggregate([
+        const { name, number, summary, sweets } = req.body;
 
-            { "$match": { vacancy_type: vacancy_type } },
-           
-            {
-                "$project": {
+        // Structure to save
+        let saveData = {
+            name: name || "",
+            number: number || "",
+            summary: summary || {},
+            sweets: sweets || {}
+        };
 
-                    "_id": 1,
-                    "vacancy_type": 1,
-                    "step_detail": 1,
+        // Save the data to the database
+        let result = await SweetOrderDetails.create(saveData);
 
-                }
-            },
-        ])
-        if (user === null) {
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Sweets Details Saved Successfully",
+                data: result
+            });
+        } else {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "User not found.",
-            })
+                message: "Details Not Saved"
+            });
         }
-        else {
-            res.status(201).json({
-                error: false,
-                code: 201,
-                message: "Data fetched",
-                result: user
-            })
-        }
-
     } catch (error) {
-        console.log(error)
+        console.error(error);
         res.status(400).json({
             error: true,
             code: 400,
-            message: "sonthing went worng",
+            message: "Something went wrong",
             data: error
-        })
+        });
     }
+});
 
+app.get("/get_sweet_order_details", async (req, res) => {
+    console.log("http://localhost:2025/get_sweet_order_details");
+    try {
+        let result = await SweetOrderDetails.find({is_packed:0,is_delivered:0,is_paid:0}, {
+            _id:1,
+            name: 1,
+            number: 1,
+            summary: 1,
+            is_packed: 1,
+            is_delivered: 1,
+            is_paid: 1,
+            is_deleted: 1,
+            status: 1,
+            created: 1,
+        });
+        let data = result.map(order => ({
+            _id: order._id,
+            name: order.name,
+            number: order.number,
+            summary: order.summary,
+            is_packed: order.is_packed,
+            is_delivered: order.is_delivered,
+            is_paid: order.is_paid,
+            is_deleted: order.is_deleted,
+            status: order.status,
+            created: new Date(order.created).toLocaleString('en-IN', {
+                day: '2-digit',
+                month: '2-digit',
+                year: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            })
+        }));
+
+        console.log(data, "<<<<<<<<<<<<<result");
+
+        if (data.length > 0) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Order Details Retrieved Successfully",
+                data: data
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No Order Details Found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
 });
 
 
-app.post("/saveMrfFormDatails", upload, async (req, res) => {
-    console.log("http://localhost:2000/saveMrfFormDatails")
-
+app.post("/view_sweets_orders_by_id", async (req, res) => {
+    console.log("http://localhost:2025/view_sweets_orders_by_id");
     try {
-        let vacancy_type = req.body.vacancy_type
-        let fieldData = await fieldName.aggregate([
-
-            { "$match": { vacancy_type: vacancy_type } },
-    
-            {
-                "$lookup": {
-                    from: "approvals",
-                    localField: "vacancy_type",
-                    foreignField: "vacancy_type",
-                    as: "approvals_data"
-                }
-            },
+        // Extract order_id from the request body
+        let orderId = req.body.order_id;
         
-            { "$unwind": "$approvals_data" },
+        // Find orders by ID
+        let result = await SweetOrderDetails.find({ _id: new ObjectId(orderId) });
+
+        if (result.length > 0) {
+            // Function to format date to IST
+            const formatDateToIST = (date) => {
+                return new Date(date).toLocaleString('en-IN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
+                    timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                });
+            };
+
+            // Format created and modified fields
+            result = result.map(order => {
+                return {
+                    ...order.toObject(),
+                    created: formatDateToIST(order.created),
+                    modified: formatDateToIST(order.modified)
+                };
+            });
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Order details retrieved successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+
+
+
+app.post("/update_sweet_order_packed", async (req, res) => {
+    console.log("http://localhost:2025/update_sweet_order_packed");
+    const { orderId } = req.body; // Extract the orderId from the request body
+
+    try {
+        // Find the order by ID and update the is_packed field to true
+        let result = await SweetOrderDetails.findOneAndUpdate(
+            { _id: new ObjectId(orderId) },
+            { $set: { is_packed: 1, modified: new Date(), } },
+            { new: true }
+        );
+        // console.log(result,"<<<<<<<<<<<<<updattttttttt")
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Order status updated to packed successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+
+app.get("/get_packed_orders", async (req, res) => {
+    console.log("http://localhost:2025/get_packed_orders");
+    try {
+        // Find orders where is_packed is true
+        let result = await SweetOrderDetails.find({ is_packed: 1,is_delivered:0,is_paid:0 });
+
+        if (result.length > 0) {
+            // Format created and modified fields to Indian Standard Time (IST)
+            result = result.map(order => {
+                // Convert UTC date to IST and format
+                const formatDateToIST = (date) => {
+                    return new Date(date).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                    });
+                };
+
+                return {
+                    ...order.toObject(),
+                    created: formatDateToIST(order.created),
+                    modified: formatDateToIST(order.modified)
+                };
+            });
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Packed orders retrieved successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No packed orders found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+
+app.post("/update_sweet_order_delivered", async (req, res) => {
+    console.log("http://localhost:2025/update_sweet_order_delivered");
+    const { orderId } = req.body; // Extract the orderId from the request body
+
+    try {
+        // Find the order by ID and update the is_delivered field to true
+        let result = await SweetOrderDetails.findOneAndUpdate(
+            { _id: new ObjectId(orderId) },
+            { $set: { is_delivered: 1, updated_date: new Date() } },
+            { new: true }
+        );
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Order status updated to delivered successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+
+app.get("/get_all_orders", async (req, res) => {
+    console.log("http://localhost:2025/get_all_orders");
+     // Extract the orderId from the request body
+
+    try {
+        // Find the order by ID and update the is_delivered field to true
+        let result = await SweetOrderDetails.find({})
+
+        if (result.length > 0) {
+            // Format created and modified fields to Indian Standard Time (IST)
+            result = result.map(order => {
+                // Convert UTC date to IST and format
+                const formatDateToIST = (date) => {
+                    return new Date(date).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                    });
+                };
+
+                return {
+                    ...order.toObject(),
+                    created: formatDateToIST(order.created),
+                    modified: formatDateToIST(order.modified)
+                };
+            });
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Packed orders retrieved successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No packed orders found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+app.get("/get_delivered_orders", async (req, res) => {
+    console.log("http://localhost:2025/get_delivered_orders");
+    try {
+        // Find orders where is_delivered is true
+        let result = await SweetOrderDetails.find({ is_delivered: 1 ,is_paid:0});
+
+        if (result.length > 0) {
+            // Format created and modified fields to Indian Standard Time (IST)
+            result = result.map(order => {
+                // Convert UTC date to IST and format
+                const formatDateToIST = (date) => {
+                    return new Date(date).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                    });
+                };
+
+                return {
+                    ...order.toObject(),
+                    created: formatDateToIST(order.created),
+                    modified: formatDateToIST(order.modified)
+                };
+            });
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Packed orders retrieved successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No packed orders found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+
+
+app.post("/update_sweet_order_paid", async (req, res) => {
+    console.log("http://localhost:2025/update_sweet_order_paid");
+    const { orderId,received_amount } = req.body; // Extract the orderId from the request body
+
+    try {
+        // Find the order by ID and update the is_paid field to true
+        let result = await SweetOrderDetails.findOneAndUpdate(
+            { _id: new ObjectId(orderId) },
+            { $set: { is_paid: 1,received_amount:received_amount, updated_date: new Date() } },
+            { new: true }
+        );
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Order status updated to paid successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+
+app.get("/get_paid_orders", async (req, res) => {
+    console.log("http://localhost:2025/get_paid_orders");
+    try {
+        // Find orders where is_paid is true
+        let result = await SweetOrderDetails.find({ is_paid: 1 });
+
+        if (result.length > 0) {
+            // Format created and modified fields to Indian Standard Time (IST)
+            result = result.map(order => {
+                // Convert UTC date to IST and format
+                const formatDateToIST = (date) => {
+                    return new Date(date).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                    });
+                };
+
+                return {
+                    ...order.toObject(),
+                    created: formatDateToIST(order.created),
+                    modified: formatDateToIST(order.modified)
+                };
+            });
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Packed orders retrieved successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No packed orders found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+
+
+app.get("/get_sweets_aggregation", async (req, res) => {
+    console.log("http://localhost:2025/get_sweets_aggregation");
+    try {
+        // First aggregation to get the sweets data
+        let result = await SweetOrderDetails.aggregate([
             {
-                "$project": {
-
-                    "_id": 1,
-                    "vacancy_type": 1,
-                    "fieldDetails": 1,
-                    "approvals_data.vacancy_type": 1,
-                    "approvals_data.approved_by": 1,
-
+                $project: {
+                    sweets: {
+                        $objectToArray: "$sweets"
+                    }
                 }
             },
-        ])
-        if (fieldData === null) {
+            { $unwind: "$sweets" },
+            {
+                $group: {
+                    _id: "$sweets.k",
+                    totalOneKg: { $sum: "$sweets.v.oneKg" },
+                    totalHalfKg: { $sum: "$sweets.v.halfKg" },
+                    totalQuarterKg: { $sum: "$sweets.v.quarterKg" },
+                    totalWeight: {
+                        $sum: {
+                            $add: [
+                                { $multiply: ["$sweets.v.oneKg", 1] },
+                                { $multiply: ["$sweets.v.halfKg", 0.5] },
+                                { $multiply: ["$sweets.v.quarterKg", 0.25] }
+                            ]
+                        }
+                    },
+                }
+            },
+            {
+                $project: {
+                    sweetName: "$_id",
+                    totalOneKg: 1,
+                    totalHalfKg: 1,
+                    totalQuarterKg: 1,
+                    totalWeight: 1,
+                    _id: 0
+                }
+            }
+        ]);
+
+        // Second aggregation to get other weight and packing data
+        let otherResult = await SweetOrderDetails.aggregate([
+            {
+                $project: {
+                    sweetsArray: { $objectToArray: "$sweets" }
+                }
+            },
+            { $unwind: "$sweetsArray" },
+            {
+                $group: {
+                    _id: {
+                        sweetName: "$sweetsArray.k",
+                        otherWeight: "$sweetsArray.v.otherWeight",
+                        otherWeight2: "$sweetsArray.v.otherWeight2"
+                    },
+                    packings: { $sum: "$sweetsArray.v.otherPackings" },
+                    packings2: { $sum: "$sweetsArray.v.otherPackings2" }
+                }
+            },
+            {
+                $group: {
+                    _id: "$_id.sweetName",
+                    totalOtherWeight: {
+                        $push: {
+                            k: "$_id.otherWeight",
+                            v: "$packings"
+                        }
+                    },
+                    totalOtherWeight2: {
+                        $push: {
+                            k: "$_id.otherWeight2",
+                            v: "$packings2"
+                        }
+                    },
+                    totalOtherPackings: { $sum: "$packings" },
+                    totalOtherPackings2: { $sum: "$packings2" }
+                }
+            },
+            {
+                $addFields: {
+                    totalOtherWeight: {
+                        $arrayToObject: {
+                            $map: {
+                                input: {
+                                    $reduce: {
+                                        input: "$totalOtherWeight",
+                                        initialValue: [],
+                                        in: {
+                                            $concatArrays: [
+                                                "$$value",
+                                                [
+                                                    {
+                                                        k: { $toString: "$$this.k" },
+                                                        v: {
+                                                            $sum: {
+                                                                $map: {
+                                                                    input: {
+                                                                        $filter: {
+                                                                            input: "$totalOtherWeight",
+                                                                            as: "item",
+                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
+                                                                        }
+                                                                    },
+                                                                    as: "item",
+                                                                    in: "$$item.v"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                },
+                                as: "item",
+                                in: "$$item"
+                            }
+                        }
+                    },
+                    totalOtherWeight2: {
+                        $arrayToObject: {
+                            $map: {
+                                input: {
+                                    $reduce: {
+                                        input: "$totalOtherWeight2",
+                                        initialValue: [],
+                                        in: {
+                                            $concatArrays: [
+                                                "$$value",
+                                                [
+                                                    {
+                                                        k: { $toString: "$$this.k" },
+                                                        v: {
+                                                            $sum: {
+                                                                $map: {
+                                                                    input: {
+                                                                        $filter: {
+                                                                            input: "$totalOtherWeight2",
+                                                                            as: "item",
+                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
+                                                                        }
+                                                                    },
+                                                                    as: "item",
+                                                                    in: "$$item.v"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                },
+                                as: "item",
+                                in: "$$item"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    sweetName: "$_id",
+                    totalOtherWeight: 1,
+                    totalOtherPackings: 1,
+                    totalOtherWeight2: 1,
+                    totalOtherPackings2: 1,
+                    _id: 0
+                }
+            },
+            { $sort: { sweetName: 1 } }
+        ]);
+
+        // Merge results based on sweetName
+        const mergedResults = result.map(item => {
+            const otherItem = otherResult.find(o => o.sweetName === item.sweetName);
+            return {
+                ...item,
+                ...otherItem
+            };
+        });
+
+        if (mergedResults.length > 0) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Sweets aggregation retrieved successfully",
+                data: mergedResults
+            });
+        } else {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "fieldData not found.",
-            })
+                message: "No sweets data found"
+            });
         }
-        else {
-            // console.log(JSON.stringify(fieldData),"111111111111111111111111111")
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
 
-            let fieldArr = []
-            for(i=0;i<fieldData[0].fieldDetails.length;i++){
-                fieldArr.push(fieldData[0].fieldDetails[i].field_name)
+app.get("/get_packed_sweets_aggregation", async (req, res) => {
+    console.log("http://localhost:2025/get_packed_sweets_aggregation");
+    try {
+        // First aggregation to get the sweets data
+        let result = await SweetOrderDetails.aggregate([
+            {$match : {is_packed:0}},
+            {
+                $project: {
+                    sweets: {
+                        $objectToArray: "$sweets"
+                    }
+                }
+            },
+            { $unwind: "$sweets" },
+            {
+                $group: {
+                    _id: "$sweets.k",
+                    totalOneKg: { $sum: "$sweets.v.oneKg" },
+                    totalHalfKg: { $sum: "$sweets.v.halfKg" },
+                    totalQuarterKg: { $sum: "$sweets.v.quarterKg" },
+                    totalWeight: {
+                        $sum: {
+                            $add: [
+                                { $multiply: ["$sweets.v.oneKg", 1] },
+                                { $multiply: ["$sweets.v.halfKg", 0.5] },
+                                { $multiply: ["$sweets.v.quarterKg", 0.25] }
+                            ]
+                        }
+                    },
+                }
+            },
+            {
+                $project: {
+                    sweetName: "$_id",
+                    totalOneKg: 1,
+                    totalHalfKg: 1,
+                    totalQuarterKg: 1,
+                    totalWeight: 1,
+                    _id: 0
+                }
             }
-            console.log(fieldArr,"222222222222222222222222222222222")
+        ]);
 
-            
-            let approvalFieldArr = []
-            for(i=0;i<fieldData[0].approvals_data.approved_by.length;i++){
-                approvalFieldArr.push(fieldData[0].approvals_data.approved_by[i].department_name)
-            }
-            console.log(approvalFieldArr,"apppppppppppppppppppppppppppp")
-            
-            let approvalNameArr = []
-            for(i=0;i<fieldData[0].approvals_data.approved_by.length;i++){
-                approvalNameArr.push(fieldData[0].approvals_data.approved_by[i].list_authorities)
-            }
-            console.log(approvalNameArr,"apppnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnnn")
-            
-            let stepData = await formStepDetails.find({ vacancy_type: vacancy_type })
+        // Second aggregation to get other weight and packing data
+        let otherResult = await SweetOrderDetails.aggregate([
+            {$match : {is_packed:0}},
+            {
+                $project: {
+                    sweetsArray: { $objectToArray: "$sweets" }
+                }
+            },
+            { $unwind: "$sweetsArray" },
+            {
+                $group: {
+                    _id: {
+                        sweetName: "$sweetsArray.k",
+                        otherWeight: "$sweetsArray.v.otherWeight",
+                        otherWeight2: "$sweetsArray.v.otherWeight2"
+                    },
+                    packings: { $sum: "$sweetsArray.v.otherPackings" },
+                    packings2: { $sum: "$sweetsArray.v.otherPackings2" }
+                }
+            },
+            {
+                $group: {
+                    _id: "$_id.sweetName",
+                    totalOtherWeight: {
+                        $push: {
+                            k: "$_id.otherWeight",
+                            v: "$packings"
+                        }
+                    },
+                    totalOtherWeight2: {
+                        $push: {
+                            k: "$_id.otherWeight2",
+                            v: "$packings2"
+                        }
+                    },
+                    totalOtherPackings: { $sum: "$packings" },
+                    totalOtherPackings2: { $sum: "$packings2" }
+                }
+            },
+            {
+                $addFields: {
+                    totalOtherWeight: {
+                        $arrayToObject: {
+                            $map: {
+                                input: {
+                                    $reduce: {
+                                        input: "$totalOtherWeight",
+                                        initialValue: [],
+                                        in: {
+                                            $concatArrays: [
+                                                "$$value",
+                                                [
+                                                    {
+                                                        k: { $toString: "$$this.k" },
+                                                        v: {
+                                                            $sum: {
+                                                                $map: {
+                                                                    input: {
+                                                                        $filter: {
+                                                                            input: "$totalOtherWeight",
+                                                                            as: "item",
+                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
+                                                                        }
+                                                                    },
+                                                                    as: "item",
+                                                                    in: "$$item.v"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                },
+                                as: "item",
+                                in: "$$item"
+                            }
+                        }
+                    },
+                    totalOtherWeight2: {
+                        $arrayToObject: {
+                            $map: {
+                                input: {
+                                    $reduce: {
+                                        input: "$totalOtherWeight2",
+                                        initialValue: [],
+                                        in: {
+                                            $concatArrays: [
+                                                "$$value",
+                                                [
+                                                    {
+                                                        k: { $toString: "$$this.k" },
+                                                        v: {
+                                                            $sum: {
+                                                                $map: {
+                                                                    input: {
+                                                                        $filter: {
+                                                                            input: "$totalOtherWeight2",
+                                                                            as: "item",
+                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
+                                                                        }
+                                                                    },
+                                                                    as: "item",
+                                                                    in: "$$item.v"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                },
+                                as: "item",
+                                in: "$$item"
+                            }
+                        }
+                    }
+                }
+            },
+            {
+                $project: {
+                    sweetName: "$_id",
+                    totalOtherWeight: 1,
+                    totalOtherPackings: 1,
+                    totalOtherWeight2: 1,
+                    totalOtherPackings2: 1,
+                    _id: 0
+                }
+            },
+            { $sort: { sweetName: 1 } }
+        ]);
 
-            // console.log(JSON.stringify(stepData),"stepppppppppppppdataaaaaaaaaaaaaaa")
-            let stepFieldArr = []
-            for(j=0;j<stepData.length;j++){
-            stepFieldArr.push({step_name:stepData[j].step_detail[0].step_name})
-            for(i=0;i<stepData[j].step_detail[0].step_field_details_.length;i++){
-                stepFieldArr.push({step_field_name:stepData[j].step_detail[0].step_field_details_[i].field_name})
-            }
-            console.log(stepFieldArr,"sssssssssssssssssssssssssssssssssssss")
-        }
+        // Merge results based on sweetName
+        const mergedResults = result.map(item => {
+            const otherItem = otherResult.find(o => o.sweetName === item.sweetName);
+            return {
+                ...item,
+                ...otherItem
+            };
+        });
 
-
-
-            res.status(201).json({
+        if (mergedResults.length > 0) {
+            res.status(200).json({
                 error: false,
+                code: 200,
+                message: "Sweets aggregation retrieved successfully",
+                data: mergedResults
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No sweets data found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
+
+app.post('/get_order_based_on_name', async (req, res) => {
+
+
+    console.log("http://localhost:2025/get_order_based_on_name");
+
+
+    const name = req.body.name ? req.body.name : "";
+
+
+    const type = req.body.type ? req.body.type : "";
+
+
+    try {
+
+
+        const regex = new RegExp(name, 'i');
+
+
+        let searchCondition = { name: regex };
+
+        if (type === "all") {
+
+            searchCondition 
+
+        }else if (type === "packed") {
+
+
+            searchCondition.is_packed = 1;
+
+
+            searchCondition.is_delivered = 0;
+
+
+            searchCondition.is_paid = 0;
+
+
+        }else if (type === "initial") {
+
+
+            searchCondition.is_packed = 0;
+
+
+            searchCondition.is_delivered = 0;
+
+
+            searchCondition.is_paid = 0;
+
+        }else if (type === "delivered") {
+
+
+            searchCondition.is_packed = 1;
+
+
+            searchCondition.is_delivered = 1;
+
+
+            searchCondition.is_paid = 0;
+
+
+        }else if (type === "paid") {
+
+
+            searchCondition.is_packed = 1;
+
+
+            searchCondition.is_delivered = 1;
+
+
+            searchCondition.is_paid = 1;
+
+        }
+
+
+        let result = await SweetOrderDetails.find(searchCondition, {
+
+           _id:1,
+
+            name: 1,
+
+
+            number: 1,
+
+
+            summary: 1,
+
+
+            is_packed: 1,
+
+
+            is_delivered: 1,
+
+
+            is_paid: 1,
+
+
+            is_deleted: 1,
+
+
+            status: 1,
+
+
+            created: 1,
+
+        });
+
+
+        let data = result.map(order => ({
+
+           _id:order._id,
+
+            name: order.name,
+
+
+            number: order.number,
+
+
+            summary: order.summary,
+
+
+            is_packed: order.is_packed,
+
+
+            is_delivered: order.is_delivered,
+
+
+            is_paid: order.is_paid,
+
+
+            is_deleted: order.is_deleted,
+
+
+            status: order.status,
+
+
+            created: new Date(order.created).toLocaleString('en-IN', {
+
+
+                day: '2-digit',
+
+
+                month: '2-digit',
+
+
+                year: 'numeric',
+
+
+                hour: '2-digit',
+
+
+                minute: '2-digit',
+
+
+                second: '2-digit',
+
+
+                hour12: true
+
+            })
+
+        }));
+
+
+        if (data.length > 0) {
+
+
+            res.status(200).json({
+
+
+                error: false,
+
+
+                code: 200,
+
+
+                message: "Order Details Retrieved Successfully",
+
+
+                data: data
+
+            });
+
+
+        } else {
+
+
+            res.status(404).json({
+
+
+                error: false,
+
+
                 code: 201,
-                message: "Data fetched",
-                result: fieldData
-            })
+
+
+                message: "No Order Details Found"
+
+            });
+
         }
 
+
     } catch (error) {
-        console.log(error)
+
+
+        console.error(error);
+
+
         res.status(400).json({
+
+
             error: true,
+
+
             code: 400,
-            message: "sonthing went worng",
+
+
+            message: "Something went wrong",
+
+
             data: error
-        })
+
+        });
+
     }
 
 });
 
-app.post("/saveMRFformDetails", async (req, res) => {
-    console.log("http://localhost:2000/saveMRFformDetails")
+
+app.post('/delete_order', async (req, res) => {
+    const order_id = req.body.order_id;
 
     try {
+        const result = await SweetOrderDetails.deleteOne({ _id: new ObjectId(order_id) });
 
-        let vacancy_type = req.body.vacancy_type
-        let mrfFormData = req.body.mrfFormData ? req.body.mrfFormData : []
-
-        let saveData = {
-
-            vacancy_type: vacancy_type,
-            mrfFormData: mrfFormData,
-
-        }
-        let result = await mrf_form_details.create(saveData)
-
-        if (result) {
-            res.status(200).json({
-                error: false,
-                code: 200,
-                message: "Saved Successfully",
-                data: result
-            })
-        } else {
+        if (!result) {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "Something went wrong",
-            })
+                message: "Order not found"
+            });
         }
 
+        res.status(200).json({
+            error: false,
+            code: 200,
+            message: "Order deleted successfully",
+        });
+        console.log("Order deleted successfully")
     } catch (error) {
-        console.log(error)
-        res.status(400).json({
-            error: true,
-            code: 400,
-            message: "sonthing went worng",
-            data: error
-        })
+        res.status(500).json({ error: 'Server error' });
     }
-
 });
-
-app.post("/saveMRFstepDetails", async (req, res) => {
-    console.log("http://localhost:2000/saveMRFstepDetails")
-
-    try {
-
-        let vacancy_type = req.body.vacancy_type
-        let mrfStepData = req.body.mrfStepData ? req.body.mrfStepData : []
-
-
-        let saveData = {
-
-            vacancy_type: vacancy_type,
-            mrfStepData: mrfStepData,
-
-        }
-        let result = await mrf_step_details.create(saveData)
-
-        if (result) {
-            res.status(200).json({
-                error: false,
-                code: 200,
-                message: "Saved Successfully",
-                data: result
-            })
-        } else {
-            res.status(404).json({
-                error: true,
-                code: 404,
-                message: "Something went wrong",
-            })
-        }
-
-    } catch (error) {
-        console.log(error)
-        res.status(400).json({
-            error: true,
-            code: 400,
-            message: "sonthing went worng",
-            data: error
-        })
-    }
-
-});
-
-app.post("/saveMRFapprovalDetails", async (req, res) => {
-    console.log("http://localhost:2000/saveMRFapprovalDetails")
-
-    try {
-
-        let vacancy_type = req.body.vacancy_type
-        let mrfApprovalData = req.body.mrfApprovalData ? req.body.mrfApprovalData : []
-
-
-        let saveData = {
-
-            vacancy_type: vacancy_type,
-            mrfApprovalData: mrfApprovalData,
-
-        }
-        let result = await mrf_approval_details.create(saveData)
-
-        if (result) {
-            res.status(200).json({
-                error: false,
-                code: 200,
-                message: "Saved Successfully",
-                data: result
-            })
-        } else {
-            res.status(404).json({
-                error: true,
-                code: 404,
-                message: "Something went wrong",
-            })
-        }
-
-    } catch (error) {
-        console.log(error)
-        res.status(400).json({
-            error: true,
-            code: 400,
-            message: "sonthing went worng",
-            data: error
-        })
-    }
-
-});
-
-
-
-
-app.listen((2000), () => {
-    console.log("app is running on port 2000")
-})

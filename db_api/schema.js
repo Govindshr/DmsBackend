@@ -43,103 +43,41 @@ const classDetailsSchema = new mongoose.Schema({
 });
 ClassDetails = mongoose.model("class_details", classDetailsSchema);
 
-const fieldNameSchema = new mongoose.Schema({
+/**************govind*************/ 
 
-    vacancy_type: String,
-    fieldDetails: [
-        {
-            field_name: String,
-            field_type: String,
-            place_holder: String
-        }
-    ],
+const OerderSchema = new mongoose.Schema({
+
+    name: String,
+    price: String,
     created: { type: Date, default: Date.now },
     modified: { type: Date, default: Date.now }
 
 });
-fieldName = mongoose.model("field_names", fieldNameSchema);
+OrderDetails = mongoose.model("order_details", OerderSchema);
 
-const formStepsSchema = new mongoose.Schema({
+const SweetOrderSchema = new mongoose.Schema({
 
-    vacancy_type: String,
-
-    step_detail: [
-        {
-            step_name: String,
-            step_field_details_: [
-                {
-                    field_name: String,
-                    field_type: String,
-                    place_holder: String
-                }
-            ],
-        }
-    ],
-
+    name: String,
+    number: String,
+    summary: {},
+    sweets: {},
+    received_amount : { type: String, default: null },
+    is_packed : { type: Number, default: 0 },
+    is_delivered : { type: Number, default: 0 },
+    is_paid : { type: Number, default: 0 },
+    is_deleted: { type: Number, default: 0 },
+    status: { type: Number, default: 0 },
     created: { type: Date, default: Date.now },
     modified: { type: Date, default: Date.now }
 
 });
-formStepDetails = mongoose.model("form_steps", formStepsSchema);
-
-
-const approvalNeedSchema = new mongoose.Schema({
-
-    vacancy_type: String,
-    approved_by : [
-        {
-            department_name: String,
-            list_authorities: String,
-            status:{ type: Number, default: 0 }
-        }
-    ],
-    created: { type: Date, default: Date.now },
-    modified: { type: Date, default: Date.now }
-
-});
-approvalNeed = mongoose.model("approvals", approvalNeedSchema);
-
-const MRFformSchema = new mongoose.Schema({
-
-    vacancy_type: String,
-    mrfFormData:[],
-    created: { type: Date, default: Date.now },
-    modified: { type: Date, default: Date.now }
-
-});
-mrf_form_details = mongoose.model("mrf_form_details", MRFformSchema);
-
-const MRFstepSchema = new mongoose.Schema({
-
-    vacancy_type: String,
-    mrfStepData:[],
-    created: { type: Date, default: Date.now },
-    modified: { type: Date, default: Date.now }
-
-});
-mrf_step_details = mongoose.model("mrf_step_details", MRFstepSchema);
-
-const MRFapprovalSchema = new mongoose.Schema({
-
-    vacancy_type: String,
-    mrfApprovalData:[],
-    created: { type: Date, default: Date.now },
-    modified: { type: Date, default: Date.now }
-
-});
-mrf_approval_details = mongoose.model("mrf_approval_details", MRFapprovalSchema);
-
+SweetOrderDetails = mongoose.model("sweets_details", SweetOrderSchema);
 
 module.exports = {
     Registration,
     FeeDetails,
     ClassDetails,
- /**************glueple*************/ 
-    fieldName, 
-    formStepDetails,
-    approvalNeed,
-    mrf_form_details,
-    mrf_step_details,
-    mrf_approval_details,
-
+ /**************govind*************/ 
+    OrderDetails,
+    SweetOrderDetails
 }
