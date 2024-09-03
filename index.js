@@ -3,16 +3,18 @@ const mongoose = require("mongoose");
 const fs = require('fs')
 const multer = require("multer");
 const cors = require("cors");
+const dotenv = require("dotenv")
 var bcrypt = require('bcryptjs');
 const { ObjectId } = require("mongoose").Types;
-
-
+const path =require("path")
+dotenv.config()
 const app = express();
 app.use(express.json());
 app.use(cors());
-
+let imagepath = path.join(__dirname,"./uploads")
+app.use(express.static(imagepath))
 require("./db_api/config")
-const { Registration, FeeDetails, ClassDetails, OrderDetails, SweetOrderDetails } = require("./db_api/schema")
+const { Registration, FeeDetails, ClassDetails, OrderDetails, SweetOrderDetails, Expence,ExtraSweets } = require("./db_api/schema")
 
 app.listen((2025), () => {
     console.log("app is running on port 2025")
@@ -468,8 +470,8 @@ app.post("/sweet_order_details", async (req, res) => {
 app.get("/get_sweet_order_details", async (req, res) => {
     console.log("http://localhost:2025/get_sweet_order_details");
     try {
-        let result = await SweetOrderDetails.find({is_packed:0,is_delivered:0,is_paid:0}, {
-            _id:1,
+        let result = await SweetOrderDetails.find({ is_packed: 0, is_delivered: 0, is_paid: 0 }, {
+            _id: 1,
             name: 1,
             number: 1,
             summary: 1,
@@ -534,7 +536,7 @@ app.post("/view_sweets_orders_by_id", async (req, res) => {
     try {
         // Extract order_id from the request body
         let orderId = req.body.order_id;
-        
+
         // Find orders by ID
         let result = await SweetOrderDetails.find({ _id: new ObjectId(orderId) });
 
@@ -629,7 +631,7 @@ app.get("/get_packed_orders", async (req, res) => {
     console.log("http://localhost:2025/get_packed_orders");
     try {
         // Find orders where is_packed is true
-        let result = await SweetOrderDetails.find({ is_packed: 1,is_delivered:0,is_paid:0 });
+        let result = await SweetOrderDetails.find({ is_packed: 1, is_delivered: 0, is_paid: 0 });
 
         if (result.length > 0) {
             // Format created and modified fields to Indian Standard Time (IST)
@@ -718,7 +720,7 @@ app.post("/update_sweet_order_delivered", async (req, res) => {
 
 app.get("/get_all_orders", async (req, res) => {
     console.log("http://localhost:2025/get_all_orders");
-     // Extract the orderId from the request body
+    // Extract the orderId from the request body
 
     try {
         // Find the order by ID and update the is_delivered field to true
@@ -775,7 +777,7 @@ app.get("/get_delivered_orders", async (req, res) => {
     console.log("http://localhost:2025/get_delivered_orders");
     try {
         // Find orders where is_delivered is true
-        let result = await SweetOrderDetails.find({ is_delivered: 1 ,is_paid:0});
+        let result = await SweetOrderDetails.find({ is_delivered: 1, is_paid: 0 });
 
         if (result.length > 0) {
             // Format created and modified fields to Indian Standard Time (IST)
@@ -828,13 +830,13 @@ app.get("/get_delivered_orders", async (req, res) => {
 
 app.post("/update_sweet_order_paid", async (req, res) => {
     console.log("http://localhost:2025/update_sweet_order_paid");
-    const { orderId,received_amount } = req.body; // Extract the orderId from the request body
+    const { orderId, received_amount } = req.body; // Extract the orderId from the request body
 
     try {
         // Find the order by ID and update the is_paid field to true
         let result = await SweetOrderDetails.findOneAndUpdate(
             { _id: new ObjectId(orderId) },
-            { $set: { is_paid: 1,received_amount:received_amount, updated_date: new Date() } },
+            { $set: { is_paid: 1, received_amount: received_amount, updated_date: new Date() } },
             { new: true }
         );
 
@@ -1132,7 +1134,7 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
     try {
         // First aggregation to get the sweets data
         let result = await SweetOrderDetails.aggregate([
-            {$match : {is_packed:0}},
+            { $match: { is_packed: 0 } },
             {
                 $project: {
                     sweets: {
@@ -1172,7 +1174,7 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
 
         // Second aggregation to get other weight and packing data
         let otherResult = await SweetOrderDetails.aggregate([
-            {$match : {is_packed:0}},
+            { $match: { is_packed: 0 } },
             {
                 $project: {
                     sweetsArray: { $objectToArray: "$sweets" }
@@ -1360,9 +1362,9 @@ app.post('/get_order_based_on_name', async (req, res) => {
 
         if (type === "all") {
 
-            searchCondition 
+            searchCondition
 
-        }else if (type === "packed") {
+        } else if (type === "packed") {
 
 
             searchCondition.is_packed = 1;
@@ -1374,7 +1376,7 @@ app.post('/get_order_based_on_name', async (req, res) => {
             searchCondition.is_paid = 0;
 
 
-        }else if (type === "initial") {
+        } else if (type === "initial") {
 
 
             searchCondition.is_packed = 0;
@@ -1385,7 +1387,7 @@ app.post('/get_order_based_on_name', async (req, res) => {
 
             searchCondition.is_paid = 0;
 
-        }else if (type === "delivered") {
+        } else if (type === "delivered") {
 
 
             searchCondition.is_packed = 1;
@@ -1397,7 +1399,7 @@ app.post('/get_order_based_on_name', async (req, res) => {
             searchCondition.is_paid = 0;
 
 
-        }else if (type === "paid") {
+        } else if (type === "paid") {
 
 
             searchCondition.is_packed = 1;
@@ -1413,7 +1415,7 @@ app.post('/get_order_based_on_name', async (req, res) => {
 
         let result = await SweetOrderDetails.find(searchCondition, {
 
-           _id:1,
+            _id: 1,
 
             name: 1,
 
@@ -1446,7 +1448,7 @@ app.post('/get_order_based_on_name', async (req, res) => {
 
         let data = result.map(order => ({
 
-           _id:order._id,
+            _id: order._id,
 
             name: order.name,
 
@@ -1586,6 +1588,302 @@ app.post('/delete_order', async (req, res) => {
             message: "Order deleted successfully",
         });
         console.log("Order deleted successfully")
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post('/update_remaining_order', async (req, res) => {
+    const order_id = req.body.order_id;
+    const remaining_order = req.body.remaining_order ? req.body.remaining_order : {};
+
+    try {
+        const result = await SweetOrderDetails.updateOne(
+            { _id: new ObjectId(order_id) },
+            { $set: { remaining_order: remaining_order } }
+        );
+
+        if (!result) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+
+        res.status(200).json({
+            error: false,
+            code: 200,
+            message: " Remaining Order  updated successfully",
+        });
+        console.log("Order updated successfully")
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+
+app.post("/addExpence", upload, async (req, res) => {
+    console.log("http://localhost:2025/addExpence")
+
+    try {
+
+        let bill_image = req.file ? req.file.filename : "";     // req.body.image
+        let type = req.body.type ? req.body.type : ""
+        let reciver_name = req.body.reciver_name ? req.body.reciver_name : ""
+        let amount = req.body.amount ? req.body.amount : ""
+        let remarks = req.body.remarks ? req.body.remarks : ""
+        let saveData = {
+            type: type,
+            reciver_name: reciver_name,
+            amount: amount,
+            remarks: remarks,
+            bill_image: "http://localhost:2025/" + bill_image,
+
+
+        }
+        let result = await Expence.create(saveData)
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Add expence Successfully",
+                data: result
+            })
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Not add",
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
+app.get("/getExpence", async (req, res) => {
+    console.log("http://localhost:2025/getExpence")
+
+    try {
+
+        // let email = req.body.email ? req.body.email : ""
+        let user = await Expence.find({})
+        // console.log(user)
+        if (user === null) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Expence not found.",
+            })
+
+        }
+        else {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Data fetched",
+                result: user
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
+app.post("/viewExpence", async (req, res) => {
+    console.log("http://localhost:2025/viewExpence")
+
+    try {
+
+        let expence_id = req.body.expence_id ? req.body.expence_id : ""
+
+        let result = await Expence.find({ _id: new ObjectId(expence_id) })
+        // console.log(user)
+        if (result === null) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Expence not found.",
+            })
+
+        }
+        else {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Data fetched",
+                result: result
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+
+app.post('/delete_expence', async (req, res) => {
+    console.log("http://localhost:2025/delete_expence")
+
+    let expence_id = req.body.expence_id ? req.body.expence_id : ""
+    try {
+        const result = await Expence.deleteOne({ _id: new ObjectId(expence_id) });
+
+        if (!result) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+
+        res.status(200).json({
+            error: false,
+            code: 200,
+            message: "Expence deleted successfully",
+        });
+        console.log("Expence deleted successfully")
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+app.post("/add_extra_sweets", upload, async (req, res) => {
+    console.log("http://localhost:2025/add_extra_sweets")
+
+    try {
+
+        // let bill_image = req.file ? req.file.filename : "";     // req.body.image
+        let sweet_name = req.body.sweet_name ? req.body.sweet_name : ""
+        let price = req.body.price ? req.body.price : ""
+        let amount = req.body.amount ? req.body.amount : ""
+        // let remarks = req.body.remarks ? req.body.remarks : ""
+        let saveData = {
+            sweet_name: sweet_name,
+            price: price,
+            amount: amount,
+           
+
+
+        }
+        let result = await ExtraSweets.create(saveData)
+
+        if (result) {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Add expence Successfully",
+                data: result
+            })
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Not add",
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+app.get("/get_extra_sweets", async (req, res) => {
+    console.log("http://localhost:2025/get_extra_sweets")
+
+    try {
+
+        // let email = req.body.email ? req.body.email : ""
+        let user = await ExtraSweets.find({})
+        // console.log(user)
+        if (user === null) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Expence not found.",
+            })
+
+        }
+        else {
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Data fetched",
+                result: user
+            })
+        }
+
+    } catch (error) {
+        console.log(error)
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "sonthing went worng",
+            data: error
+        })
+    }
+
+});
+app.post('/update_extra_sweets', async (req, res) => {
+    const extra_id = req.body.extra_id;
+
+    let extraSweetResult = await ExtraSweets.findOne({_id:new ObjectId(extra_id)})
+
+    let sweet_name = req.body.sweet_name ? req.body.sweet_name : extraSweetResult.sweet_name
+    let price = req.body.price ? req.body.price :  extraSweetResult.price
+    let amount = req.body.amount ? req.body.amount :  extraSweetResult.amount
+    try {
+        const result = await ExtraSweets.updateOne(
+            { _id: new ObjectId(order_id) },
+            { $set: { 
+                sweet_ame: sweet_name ,
+                price:price,
+                amount:amount
+            }}
+        );
+
+        if (!result) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+
+        res.status(200).json({
+            error: false,
+            code: 200,
+            message: "updated successfully",
+        });
+        console.log("Order updated successfully")
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }

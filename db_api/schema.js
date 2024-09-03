@@ -61,6 +61,7 @@ const SweetOrderSchema = new mongoose.Schema({
     number: String,
     summary: {},
     sweets: {},
+    remaining_order: {},
     received_amount : { type: String, default: null },
     is_packed : { type: Number, default: 0 },
     is_delivered : { type: Number, default: 0 },
@@ -73,11 +74,40 @@ const SweetOrderSchema = new mongoose.Schema({
 });
 SweetOrderDetails = mongoose.model("sweets_details", SweetOrderSchema);
 
+const expenceSchema = new mongoose.Schema({
+    type: String,
+    reciver_name: String,
+    amount: String,
+    remarks:String,
+    bill_image:  String,
+    status: { type: Number, default: 0 },
+    is_deleted: { type: Number, default: 0 },
+    created: { type: Date, default: Date.now },
+    modified: { type: Date, default: Date.now }
+
+});
+Expence = mongoose.model("order_expence", expenceSchema);
+const extra_sweets = new mongoose.Schema({
+    type: String,
+    reciver_name: String,
+    amount: String,
+    remarks:String,
+    bill_image:  String,
+    status: { type: Number, default: 0 },
+    is_deleted: { type: Number, default: 0 },
+    created: { type: Date, default: Date.now },
+    modified: { type: Date, default: Date.now }
+
+});
+ExtraSweets = mongoose.model("extra_sweets", extra_sweets);
+
 module.exports = {
     Registration,
     FeeDetails,
     ClassDetails,
  /**************govind*************/ 
     OrderDetails,
-    SweetOrderDetails
+    SweetOrderDetails,
+    Expence,
+    ExtraSweets
 }
