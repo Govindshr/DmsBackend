@@ -466,6 +466,56 @@ app.post("/sweet_order_details", async (req, res) => {
         });
     }
 });
+app.post("/update_sweet_order", async (req, res) => {
+    console.log("http://localhost:2025/update_sweet_order");
+
+    try {
+        
+        const { order_id,name, number, summary, sweets } = req.body;
+
+        // Structure to update
+        let updateData = {
+            name: name || "",
+            number: number || "",
+            summary: summary || {},
+            sweets: sweets || {}
+        };
+
+        // Find the order by order_id
+        let result = await SweetOrderDetails.updateOne(
+            {_id:new ObjectId(order_id)},
+            {
+                $set : updateData
+            }
+        );
+
+        if (result) {
+            // Update the order details
+            // await existingOrder.update(updateData);
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Sweets Details Updated Successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
 
 app.get("/get_sweet_order_details", async (req, res) => {
     console.log("http://localhost:2025/get_sweet_order_details");
@@ -1134,7 +1184,7 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
     try {
         // First aggregation to get the sweets data
         let result = await SweetOrderDetails.aggregate([
-            { $match: { is_packed: 0 } },
+            { $match: { is_packed: 1 } },
             {
                 $project: {
                     sweets: {
@@ -1174,7 +1224,7 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
 
         // Second aggregation to get other weight and packing data
         let otherResult = await SweetOrderDetails.aggregate([
-            { $match: { is_packed: 0 } },
+            { $match: { is_packed: 1 } },
             {
                 $project: {
                     sweetsArray: { $objectToArray: "$sweets" }
@@ -1862,7 +1912,7 @@ app.post('/update_extra_sweets', async (req, res) => {
     let amount = req.body.amount ? req.body.amount :  extraSweetResult.amount
     try {
         const result = await ExtraSweets.updateOne(
-            { _id: new ObjectId(order_id) },
+            { _id: new ObjectId(extra_id) },
             { $set: { 
                 sweet_ame: sweet_name ,
                 price:price,
@@ -1884,6 +1934,31 @@ app.post('/update_extra_sweets', async (req, res) => {
             message: "updated successfully",
         });
         console.log("Order updated successfully")
+    } catch (error) {
+        res.status(500).json({ error: 'Server error' });
+    }
+});
+app.post('/delete_extra_sweets', async (req, res) => {
+    console.log("http://localhost:2025/delete_extra_sweets")
+
+    let extra_id = req.body.extra_id ? req.body.extra_id : ""
+    try {
+        const result = await ExtraSweets.deleteOne({ _id: new ObjectId(extra_id) });
+
+        if (!result) {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "Order not found"
+            });
+        }
+
+        res.status(200).json({
+            error: false,
+            code: 200,
+            message: "Expence deleted successfully",
+        });
+        console.log("Expence deleted successfully")
     } catch (error) {
         res.status(500).json({ error: 'Server error' });
     }

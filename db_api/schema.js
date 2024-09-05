@@ -62,7 +62,7 @@ const SweetOrderSchema = new mongoose.Schema({
     summary: {},
     sweets: {},
     remaining_order: {},
-    received_amount : { type: String, default: null },
+    received_amount : { type: Number, default: null },
     is_packed : { type: Number, default: 0 },
     is_delivered : { type: Number, default: 0 },
     is_paid : { type: Number, default: 0 },
@@ -88,11 +88,11 @@ const expenceSchema = new mongoose.Schema({
 });
 Expence = mongoose.model("order_expence", expenceSchema);
 const extra_sweets = new mongoose.Schema({
-    type: String,
-    reciver_name: String,
-    amount: String,
-    remarks:String,
-    bill_image:  String,
+    
+    sweet_name: String,
+    amount: Number,
+    price:Number,
+  
     status: { type: Number, default: 0 },
     is_deleted: { type: Number, default: 0 },
     created: { type: Date, default: Date.now },
