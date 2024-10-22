@@ -429,11 +429,12 @@ app.post("/sweet_order_details", async (req, res) => {
     console.log("http://localhost:2025/sweet_order_details");
 
     try {
-        const { name, number, summary, sweets } = req.body;
+        const { name, number, summary, sweets,payment_mode } = req.body;
 
         // Structure to save
         let saveData = {
             name: name || "",
+            payment_mode: payment_mode || "",
             number: number || "",
             summary: summary || {},
             sweets: sweets || {}
@@ -520,7 +521,7 @@ app.post("/update_sweet_order", async (req, res) => {
 app.get("/get_sweet_order_details", async (req, res) => {
     console.log("http://localhost:2025/get_sweet_order_details");
     try {
-        let result = await SweetOrderDetails.find({ is_packed: 0, is_delivered: 0, is_paid: 0 }, {
+        let result = await SweetOrderDetails.find({ is_packed: 0, is_delivered: 0, is_paid: 0 , is_half_packed: 0 }, {
             _id: 1,
             name: 1,
             number: 1,
@@ -730,6 +731,59 @@ app.get("/get_packed_orders", async (req, res) => {
         });
     }
 });
+app.get("/get_half_packed_orders", async (req, res) => {
+    console.log("http://localhost:2025/get_half_packed_orders");
+    try {
+        // Find orders where is_packed is true
+        let result = await SweetOrderDetails.find({ is_half_packed: 1, is_delivered: 0, is_paid: 0 });
+
+        if (result.length > 0) {
+            // Format created and modified fields to Indian Standard Time (IST)
+            result = result.map(order => {
+                // Convert UTC date to IST and format
+                const formatDateToIST = (date) => {
+                    return new Date(date).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                    });
+                };
+
+                return {
+                    ...order.toObject(),
+                    created: formatDateToIST(order.created),
+                    modified: formatDateToIST(order.modified)
+                };
+            });
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Packed orders retrieved successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No packed orders found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
 
 app.post("/update_sweet_order_delivered", async (req, res) => {
     console.log("http://localhost:2025/update_sweet_order_delivered");
@@ -880,13 +934,13 @@ app.get("/get_delivered_orders", async (req, res) => {
 
 app.post("/update_sweet_order_paid", async (req, res) => {
     console.log("http://localhost:2025/update_sweet_order_paid");
-    const { orderId, received_amount } = req.body; // Extract the orderId from the request body
+    const { orderId, received_amount,payment_mode } = req.body; // Extract the orderId from the request body
 
     try {
         // Find the order by ID and update the is_paid field to true
         let result = await SweetOrderDetails.findOneAndUpdate(
             { _id: new ObjectId(orderId) },
-            { $set: { is_paid: 1, received_amount: received_amount, updated_date: new Date() } },
+            { $set: { is_paid: 1, received_amount: received_amount,payment_mode:payment_mode ,updated_date: new Date() } },
             { new: true }
         );
 
@@ -1563,11 +1617,12 @@ app.post('/delete_order', async (req, res) => {
 app.post('/update_remaining_order', async (req, res) => {
     const order_id = req.body.order_id;
     const remaining_order = req.body.remaining_order ? req.body.remaining_order : {};
+    const is_half_packed = req.body.is_half_packed ? req.body.is_half_packed :0;
 
     try {
         const result = await SweetOrderDetails.updateOne(
             { _id: new ObjectId(order_id) },
-            { $set: { remaining_order: remaining_order } }
+            { $set: { remaining_order: remaining_order,is_half_packed:is_half_packed } }
         );
 
         if (!result) {
