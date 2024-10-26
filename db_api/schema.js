@@ -56,10 +56,11 @@ const OerderSchema = new mongoose.Schema({
 OrderDetails = mongoose.model("order_details", OerderSchema);
 
 const SweetOrderSchema = new mongoose.Schema({
-
+    order_no:Number,
     name: String,
     number: String,
     payment_mode: String,
+    retail_order: Boolean,
     summary: {},
     sweets: {},
     remaining_order: {},
