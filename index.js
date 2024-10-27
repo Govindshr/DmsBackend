@@ -534,9 +534,10 @@ app.get("/get_sweet_order_details", async (req, res) => {
             _id: 1,
             name: 1,
             number: 1,
+            sweets:1,
             summary: 1,
             is_packed: 1,
-            order_no:1,
+            order_no: 1,
             is_delivered: 1,
             is_paid: 1,
             is_deleted: 1,
@@ -546,6 +547,7 @@ app.get("/get_sweet_order_details", async (req, res) => {
         let data = result.map(order => ({
             _id: order._id,
             name: order.name,
+            sweets: order.sweets,
             order_no: order.order_no,
             number: order.number,
             summary: order.summary,
@@ -1642,7 +1644,7 @@ app.post('/get_order_based_on_order_no', async (req, res) => {
             number: 1,
             summary: 1,
             is_packed: 1,
-            order_no:1,
+            order_no: 1,
             is_delivered: 1,
             is_paid: 1,
             is_deleted: 1,
@@ -2051,6 +2053,7 @@ app.post('/delete_extra_sweets', async (req, res) => {
 });
 
 
+
 app.post('/update_sweets', async (req, res) => {
     console.log("http://localhost:2025/update_sweets")
 
@@ -2076,7 +2079,7 @@ app.post('/update_sweets', async (req, res) => {
                 console.log(ele)
                 if (ele != "totalWeight" && ele != "price") {
                     let b = Object.values(result.remaining_order[ele])
-                    b.splice(7,2)
+                    b.splice(7, 2)
                     sum = sum + b.reduce((a, b) => { return a + b }, 0)
                 }
             })
@@ -2084,8 +2087,8 @@ app.post('/update_sweets', async (req, res) => {
             if (sum == 0) {
                 result.is_packed = 1
                 result.is_half_packed = 0
-            }else{
-                result.is_half_packed=1
+            } else {
+                result.is_half_packed = 1
             }
 
             // Use Promise.all to handle multiple async operations
@@ -2108,3 +2111,80 @@ app.post('/update_sweets', async (req, res) => {
         res.status(500).json({ error: 'Server error' });
     }
 });
+
+app.post('/update_stock', async (req, res) => {
+    const frontEndData = req.body.order_data || {};
+    console.log("API entry point =======", frontEndData);
+    try {
+        await updateSweets(frontEndData);
+        console.log('Update operation completed.');
+        res.status(200).json({ message: 'Stock updated successfully' });
+    } catch (error) {
+        console.error('Update operation failed:', error);
+        res.status(500).json({ message: 'Stock update failed', error: error.message });
+    }
+});
+
+// Function to update the amount based on FE data
+async function updateSweets(data) {
+    const { sweets } = data;
+
+    // Loop through each sweet type in the data
+    for (const sweetName in sweets) {
+        const sweetData = sweets[sweetName];
+
+        // Parse and calculate the weights in kilograms
+        const oneKg = parseInt(sweetData.oneKg, 10);  // Number of 1kg boxes
+        const halfKg = parseInt(sweetData.halfKg, 10) * 0.5;  // Number of 0.5kg boxes converted to kg
+        const quarterKg = parseInt(sweetData.quarterKg, 10) * 0.25;  // Number of 0.25kg boxes converted to kg
+
+        // Parse additional weights and packings in grams and convert to kilograms
+        const otherWeight = parseInt(sweetData.otherWeight, 10) / 1000; // Convert grams to kg
+        const otherPackings = parseInt(sweetData.otherPackings, 10);
+        const otherWeight2 = parseInt(sweetData.otherWeight2, 10) / 1000; // Convert grams to kg
+        const otherPackings2 = parseInt(sweetData.otherPackings2, 10);
+
+        // Calculate the total weight from additional weights and packings
+        const other_amount1 = otherWeight * otherPackings;
+        const other_amount2 = otherWeight2 * otherPackings2;
+
+        // Calculate the total amount based on all weight factors in kilograms
+        const total_amount = oneKg + halfKg + quarterKg + other_amount1 + other_amount2;
+        console.log("==========TOTAL AMOUNT (in kg)=====", total_amount);
+
+        try {
+            // Retrieve the current amount from the database
+            const existingSweet = await ExtraSweets.findOne({ sweet_name: sweetName });
+
+            if (existingSweet) {
+                const currentAmount = existingSweet.amount;
+
+                // Check if the current amount is greater than the calculated total_amount
+                if (currentAmount > total_amount) {
+                    const newAmount = currentAmount - total_amount;
+
+                    // Update the document with the new amount and modified date
+                    await ExtraSweets.findOneAndUpdate(
+                        { sweet_name: sweetName },
+                        {
+                            amount: newAmount,
+                            modified: new Date(),
+                        },
+                        { new: true }
+                    );
+
+                    console.log(`Updated ${sweetName} with new amount: ${newAmount}`);
+                } else {
+                    console.log(
+                        `Insufficient amount for ${sweetName}. Current amount (${currentAmount}) is less than the required total_amount (${total_amount}).`
+                    );
+                }
+            } else {
+                console.log(`Sweet ${sweetName} not found in the database.`);
+            }
+        } catch (error) {
+            console.error(`Error updating ${sweetName}:`, error);
+            throw error; // Rethrow to propagate the error to the calling function
+        }
+    }
+}
