@@ -34,6 +34,10 @@ const upload = multer({
         }
     })
 }).single("image");
+
+app.get("/",(req,res)=>{
+    res.send("Welcome To EC2")
+})
 app.post("/profile", upload, (req, res) => {
     res.send("file upload")
 });
