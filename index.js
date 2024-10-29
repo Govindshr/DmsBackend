@@ -349,7 +349,83 @@ app.post("/order_details", upload, async (req, res) => {
     }
 
 });
+app.post("/get_data_by_Sweetname", async (req, res) => {
+    console.log("http://localhost:2025/get_data_by_Sweetname");
 
+    const { sweetname } = req.body; // Get sweetname from request body
+
+    if (!sweetname) {
+        return res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Sweetname parameter is required in the request body"
+        });
+    }
+
+    try {
+        let orders = await SweetOrderDetails.find({}); // Fetch all orders
+
+        if (orders.length > 0) {
+            // Filter orders to include only those where the specified sweetname has at least one non-zero value
+            orders = orders.filter(order => {
+                const sweets = order.sweets;
+                if (sweets && sweets[sweetname]) {
+                    // Extract the sweet object for the given sweetname
+                    const sweetDetails = sweets[sweetname];
+
+                    // Filter out orders where all values (except price and totalWeight) are zero
+                    return Object.keys(sweetDetails).some(key => 
+                        key !== "price" && key !== "totalWeight" && sweetDetails[key] > 0
+                    );
+                }
+                return false;
+            });
+
+            // Format created and modified fields to Indian Standard Time (IST)
+            orders = orders.map(order => {
+                const formatDateToIST = (date) => {
+                    return new Date(date).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                        timeZone: 'Asia/Kolkata'
+                    });
+                };
+
+                return {
+                    ...order.toObject(),
+                    created: formatDateToIST(order.created),
+                    modified: formatDateToIST(order.modified)
+                };
+            });
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Filtered orders retrieved successfully",
+                data: orders
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No orders found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
 app.get("/getOrderDetails", upload, async (req, res) => {
     console.log("http://localhost:2025/getOrderDetails")
 
@@ -434,12 +510,16 @@ app.post("/sweet_order_details", async (req, res) => {
 
     try {
         const { name, number, summary, sweets, payment_mode, retail_order } = req.body;
-        let data = await SweetOrderDetails.find({});
-        let orderNo = data.length;
+
+        // Retrieve the last order by sorting in descending order of `order_no`
+        let lastOrder = await SweetOrderDetails.findOne({}).sort({ order_no: -1 });
+
+        // Determine the next order number
+        let orderNo = lastOrder ? lastOrder.order_no + 1 : 1;
 
         // Structure to save with conditional check for retail_order
         let saveData = {
-            order_no: orderNo + 1,
+            order_no: orderNo,
             name: name || "",
             payment_mode: payment_mode || "",
             number: number || "",
@@ -479,6 +559,7 @@ app.post("/sweet_order_details", async (req, res) => {
         });
     }
 });
+
 
 app.post("/update_sweet_order", async (req, res) => {
     console.log("http://localhost:2025/update_sweet_order");
