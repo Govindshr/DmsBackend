@@ -862,6 +862,61 @@ app.post("/update_sweet_order_delivered", async (req, res) => {
         });
     }
 });
+app.get("/get_dashboard", async (req, res) => {
+    console.log("http://localhost:2025/get_dashboard");
+    // Extract the orderId from the request body
+
+    try {
+        // Find the order by ID and update the is_delivered field to true
+        let result = await SweetOrderDetails.find({})
+
+        if (result.length > 0) {
+            // Format created and modified fields to Indian Standard Time (IST)
+            result = result.map(order => {
+                // Convert UTC date to IST and format
+                const formatDateToIST = (date) => {
+                    return new Date(date).toLocaleString('en-IN', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit',
+                        hour12: true,
+                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                    });
+                };
+
+                return {
+                    ...order.toObject(),
+                    created: formatDateToIST(order.created),
+                    modified: formatDateToIST(order.modified)
+                };
+            });
+
+            res.status(200).json({
+                error: false,
+                code: 200,
+                message: "Packed orders retrieved successfully",
+                data: result
+            });
+        } else {
+            res.status(404).json({
+                error: true,
+                code: 404,
+                message: "No packed orders found"
+            });
+        }
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({
+            error: true,
+            code: 400,
+            message: "Something went wrong",
+            data: error
+        });
+    }
+});
 
 app.post("/get_all_orders", async (req, res) => {
     console.log("http://localhost:2025/get_all_orders");
