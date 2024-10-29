@@ -531,23 +531,45 @@ app.post("/update_sweet_order", async (req, res) => {
     }
 });
 
-app.get("/get_sweet_order_details", async (req, res) => {
+app.post("/get_sweet_order_details", async (req, res) => {
     console.log("http://localhost:2025/get_sweet_order_details");
+
+    // Default pagination parameters
+    const perPage = req.body.perPage || 10;
+    const page = parseInt(req.body.page) || 1;
+
     try {
-        let result = await SweetOrderDetails.find({ is_packed: 0, is_delivered: 0, is_paid: 0, is_half_packed: 0 }, {
-            _id: 1,
-            name: 1,
-            number: 1,
-            sweets:1,
-            summary: 1,
-            is_packed: 1,
-            order_no: 1,
-            is_delivered: 1,
-            is_paid: 1,
-            is_deleted: 1,
-            status: 1,
-            created: 1,
+        // Count total records for pagination metadata
+        const totalRecords = await SweetOrderDetails.countDocuments({
+            is_packed: 0,
+            is_delivered: 0,
+            is_paid: 0,
+            is_half_packed: 0
         });
+        const totalPages = Math.ceil(totalRecords / perPage);
+
+        // Fetch records for the current page with the specified limit
+        let result = await SweetOrderDetails.find(
+            { is_packed: 0, is_delivered: 0, is_paid: 0, is_half_packed: 0 },
+            {
+                _id: 1,
+                name: 1,
+                number: 1,
+                sweets: 1,
+                summary: 1,
+                is_packed: 1,
+                order_no: 1,
+                is_delivered: 1,
+                is_paid: 1,
+                is_deleted: 1,
+                status: 1,
+                created: 1,
+            }
+        )
+            .skip((page - 1) * perPage)
+            .limit(perPage);
+
+        // Format each order's data
         let data = result.map(order => ({
             _id: order._id,
             name: order.name,
@@ -567,17 +589,19 @@ app.get("/get_sweet_order_details", async (req, res) => {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                hour12: true
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
             })
         }));
-
-        console.log(data, "<<<<<<<<<<<<<result");
 
         if (data.length > 0) {
             res.status(200).json({
                 error: false,
                 code: 200,
                 message: "Order Details Retrieved Successfully",
+                total_records: totalRecords,
+                total_pages: totalPages,
+                current_page: page,
                 data: data
             });
         } else {
@@ -839,18 +863,26 @@ app.post("/update_sweet_order_delivered", async (req, res) => {
     }
 });
 
-app.get("/get_all_orders", async (req, res) => {
+app.post("/get_all_orders", async (req, res) => {
     console.log("http://localhost:2025/get_all_orders");
-    // Extract the orderId from the request body
+
+    // Default pagination parameters
+    const perPage = req.body.perPage || 10;
+    const page = parseInt(req.body.page) || 1;
 
     try {
-        // Find the order by ID and update the is_delivered field to true
+        // Count total records for pagination metadata
+        const totalRecords = await SweetOrderDetails.countDocuments({});
+        const totalPages = Math.ceil(totalRecords / perPage);
+
+        // Fetch the records for the current page, limited to perPage entries
         let result = await SweetOrderDetails.find({})
+            .skip((page - 1) * perPage)
+            .limit(perPage);
 
         if (result.length > 0) {
             // Format created and modified fields to Indian Standard Time (IST)
             result = result.map(order => {
-                // Convert UTC date to IST and format
                 const formatDateToIST = (date) => {
                     return new Date(date).toLocaleString('en-IN', {
                         day: '2-digit',
@@ -860,7 +892,7 @@ app.get("/get_all_orders", async (req, res) => {
                         minute: '2-digit',
                         second: '2-digit',
                         hour12: true,
-                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                        timeZone: 'Asia/Kolkata'
                     });
                 };
 
@@ -871,10 +903,14 @@ app.get("/get_all_orders", async (req, res) => {
                 };
             });
 
+            // Response with pagination metadata
             res.status(200).json({
                 error: false,
                 code: 200,
                 message: "Packed orders retrieved successfully",
+                total_records: totalRecords,
+                total_pages: totalPages,
+                current_page: page,
                 data: result
             });
         } else {
@@ -894,6 +930,8 @@ app.get("/get_all_orders", async (req, res) => {
         });
     }
 });
+
+
 app.get("/get_delivered_orders", async (req, res) => {
     console.log("http://localhost:2025/get_delivered_orders");
     try {
@@ -1379,251 +1417,126 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
 
 
 app.post('/get_order_based_on_name', async (req, res) => {
-
-
     console.log("http://localhost:2025/get_order_based_on_name");
 
-
-    const name = req.body.name ? req.body.name : "";
-
-
-    const type = req.body.type ? req.body.type : "";
-
+    const name = req.body.name || "";
+    const type = req.body.type || "";
+    const perPage = req.body.perPage || 10;
+    const page = parseInt(req.body.page) || 1;
 
     try {
-
-
         const regex = new RegExp(name, 'i');
-
-
         let searchCondition = { name: regex };
 
-        if (type === "all") {
-
-            searchCondition
-
-        } else if (type === "packed") {
-
-
+        if (type === "packed") {
             searchCondition.is_packed = 1;
-
-
             searchCondition.is_delivered = 0;
-
-
             searchCondition.is_paid = 0;
-
-
         } else if (type === "initial") {
-
-
             searchCondition.is_packed = 0;
-
-
             searchCondition.is_delivered = 0;
-
-
             searchCondition.is_paid = 0;
-
         } else if (type === "delivered") {
-
-
             searchCondition.is_packed = 1;
-
-
             searchCondition.is_delivered = 1;
-
-
             searchCondition.is_paid = 0;
-
-
         } else if (type === "paid") {
-
-
             searchCondition.is_packed = 1;
-
-
             searchCondition.is_delivered = 1;
-
-
             searchCondition.is_paid = 1;
-
         }
 
+        // Count total records for pagination
+        const totalRecords = await SweetOrderDetails.countDocuments(searchCondition);
+        const totalPages = Math.ceil(totalRecords / perPage);
 
+        // Fetch records for the current page with the specified limit
         let result = await SweetOrderDetails.find(searchCondition, {
-
             _id: 1,
-
             name: 1,
-
-
+            order_no: 1,
             number: 1,
-
-
             summary: 1,
-
-
             is_packed: 1,
-
-
             is_delivered: 1,
-
-
             is_paid: 1,
-
-
             is_deleted: 1,
-
-
             status: 1,
-
-
             created: 1,
+        })
+        .skip((page - 1) * perPage)
+        .limit(perPage);
 
-        });
-
-
+        // Format each order's data
         let data = result.map(order => ({
-
             _id: order._id,
-
             name: order.name,
-
-
+            order_no: order.order_no,
             number: order.number,
-
-
             summary: order.summary,
-
-
             is_packed: order.is_packed,
-
-
             is_delivered: order.is_delivered,
-
-
             is_paid: order.is_paid,
-
-
             is_deleted: order.is_deleted,
-
-
             status: order.status,
-
-
             created: new Date(order.created).toLocaleString('en-IN', {
-
-
                 day: '2-digit',
-
-
                 month: '2-digit',
-
-
                 year: 'numeric',
-
-
                 hour: '2-digit',
-
-
                 minute: '2-digit',
-
-
                 second: '2-digit',
-
-
-                hour12: true
-
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
             })
-
         }));
 
-
         if (data.length > 0) {
-
-
             res.status(200).json({
-
-
                 error: false,
-
-
                 code: 200,
-
-
                 message: "Order Details Retrieved Successfully",
-
-
+                total_records: totalRecords,
+                total_pages: totalPages,
+                current_page: page,
                 data: data
-
             });
-
-
         } else {
-
-
             res.status(404).json({
-
-
                 error: false,
-
-
                 code: 201,
-
-
                 message: "No Order Details Found"
-
             });
-
         }
-
-
     } catch (error) {
-
-
         console.error(error);
-
-
         res.status(400).json({
-
-
             error: true,
-
-
             code: 400,
-
-
             message: "Something went wrong",
-
-
             data: error
-
         });
-
     }
-
 });
+
 
 app.post('/get_order_based_on_order_no', async (req, res) => {
     console.log("http://localhost:2025/get_order_based_on_order_no");
 
-    const orderNo = req.body.order_no ? req.body.order_no : "";
-    const type = req.body.type ? req.body.type : "";
+    const orderNo = req.body.order_no || "";
+    const type = req.body.type || "";
+    const perPage = req.body.perPage || 10;
+    const page = parseInt(req.body.page) || 1;
 
     try {
-        // Define search condition based on the presence of order_no
+        // Define search condition based on order_no presence and type
         let searchCondition = {};
 
-        // If orderNo is provided, add it to the search condition
         if (orderNo) {
             searchCondition.order_no = orderNo;
         }
 
-        // Apply filters based on type if provided
-        if (type === "all") {
-            // No additional conditions needed for "all"
-        } else if (type === "packed") {
+        if (type === "packed") {
             searchCondition.is_packed = 1;
             searchCondition.is_delivered = 0;
             searchCondition.is_paid = 0;
@@ -1641,7 +1554,11 @@ app.post('/get_order_based_on_order_no', async (req, res) => {
             searchCondition.is_paid = 1;
         }
 
-        // Fetch order details based on the search condition
+        // Count total records for pagination
+        const totalRecords = await SweetOrderDetails.countDocuments(searchCondition);
+        const totalPages = Math.ceil(totalRecords / perPage);
+
+        // Fetch records for the current page with the specified limit
         let result = await SweetOrderDetails.find(searchCondition, {
             _id: 1,
             name: 1,
@@ -1654,7 +1571,9 @@ app.post('/get_order_based_on_order_no', async (req, res) => {
             is_deleted: 1,
             status: 1,
             created: 1,
-        });
+        })
+        .skip((page - 1) * perPage)
+        .limit(perPage);
 
         // Format the result data
         let data = result.map(order => ({
@@ -1675,7 +1594,8 @@ app.post('/get_order_based_on_order_no', async (req, res) => {
                 hour: '2-digit',
                 minute: '2-digit',
                 second: '2-digit',
-                hour12: true
+                hour12: true,
+                timeZone: 'Asia/Kolkata'
             })
         }));
 
@@ -1685,6 +1605,9 @@ app.post('/get_order_based_on_order_no', async (req, res) => {
                 error: false,
                 code: 200,
                 message: "Order Details Retrieved Successfully",
+                total_records: totalRecords,
+                total_pages: totalPages,
+                current_page: page,
                 data: data
             });
         } else {
@@ -1705,6 +1628,7 @@ app.post('/get_order_based_on_order_no', async (req, res) => {
         });
     }
 });
+
 
 
 app.post('/delete_order', async (req, res) => {
