@@ -719,16 +719,32 @@ app.post("/update_sweet_order_packed", async (req, res) => {
     }
 });
 
-app.get("/get_packed_orders", async (req, res) => {
+app.post("/get_packed_orders", async (req, res) => {
     console.log("http://localhost:2025/get_packed_orders");
+
+    // Default pagination parameters
+    const perPage = req.body.perPage || 10;
+    const page = parseInt(req.body.page) || 1;
+
     try {
-        // Find orders where is_packed is true
-        let result = await SweetOrderDetails.find({ is_packed: 1, is_delivered: 0, is_paid: 0 });
+        // Count total records for pagination metadata
+        const totalRecords = await SweetOrderDetails.countDocuments({
+            is_packed: 1,
+            is_delivered: 0,
+            is_paid: 0
+        });
+        const totalPages = Math.ceil(totalRecords / perPage);
+
+        // Fetch records for the current page with the specified limit
+        let result = await SweetOrderDetails.find(
+            { is_packed: 1, is_delivered: 0, is_paid: 0 }
+        )
+        .skip((page - 1) * perPage)
+        .limit(perPage);
 
         if (result.length > 0) {
             // Format created and modified fields to Indian Standard Time (IST)
             result = result.map(order => {
-                // Convert UTC date to IST and format
                 const formatDateToIST = (date) => {
                     return new Date(date).toLocaleString('en-IN', {
                         day: '2-digit',
@@ -738,7 +754,7 @@ app.get("/get_packed_orders", async (req, res) => {
                         minute: '2-digit',
                         second: '2-digit',
                         hour12: true,
-                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                        timeZone: 'Asia/Kolkata'
                     });
                 };
 
@@ -753,6 +769,9 @@ app.get("/get_packed_orders", async (req, res) => {
                 error: false,
                 code: 200,
                 message: "Packed orders retrieved successfully",
+                total_records: totalRecords,
+                total_pages: totalPages,
+                current_page: page,
                 data: result
             });
         } else {
@@ -772,16 +791,33 @@ app.get("/get_packed_orders", async (req, res) => {
         });
     }
 });
-app.get("/get_half_packed_orders", async (req, res) => {
+
+app.post("/get_half_packed_orders", async (req, res) => {
     console.log("http://localhost:2025/get_half_packed_orders");
+
+    // Default pagination parameters
+    const perPage = req.body.perPage || 10;
+    const page = parseInt(req.body.page) || 1;
+
     try {
-        // Find orders where is_packed is true
-        let result = await SweetOrderDetails.find({ is_half_packed: 1, is_delivered: 0, is_paid: 0 });
+        // Count total records for pagination metadata
+        const totalRecords = await SweetOrderDetails.countDocuments({
+            is_half_packed: 1,
+            is_delivered: 0,
+            is_paid: 0
+        });
+        const totalPages = Math.ceil(totalRecords / perPage);
+
+        // Fetch records for the current page with the specified limit
+        let result = await SweetOrderDetails.find(
+            { is_half_packed: 1, is_delivered: 0, is_paid: 0 }
+        )
+        .skip((page - 1) * perPage)
+        .limit(perPage);
 
         if (result.length > 0) {
             // Format created and modified fields to Indian Standard Time (IST)
             result = result.map(order => {
-                // Convert UTC date to IST and format
                 const formatDateToIST = (date) => {
                     return new Date(date).toLocaleString('en-IN', {
                         day: '2-digit',
@@ -791,7 +827,7 @@ app.get("/get_half_packed_orders", async (req, res) => {
                         minute: '2-digit',
                         second: '2-digit',
                         hour12: true,
-                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                        timeZone: 'Asia/Kolkata'
                     });
                 };
 
@@ -805,14 +841,17 @@ app.get("/get_half_packed_orders", async (req, res) => {
             res.status(200).json({
                 error: false,
                 code: 200,
-                message: "Packed orders retrieved successfully",
+                message: "Half-packed orders retrieved successfully",
+                total_records: totalRecords,
+                total_pages: totalPages,
+                current_page: page,
                 data: result
             });
         } else {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "No packed orders found"
+                message: "No half-packed orders found"
             });
         }
     } catch (error) {
@@ -825,6 +864,7 @@ app.get("/get_half_packed_orders", async (req, res) => {
         });
     }
 });
+
 
 app.post("/update_sweet_order_delivered", async (req, res) => {
     console.log("http://localhost:2025/update_sweet_order_delivered");
@@ -987,16 +1027,31 @@ app.post("/get_all_orders", async (req, res) => {
 });
 
 
-app.get("/get_delivered_orders", async (req, res) => {
+app.post("/get_delivered_orders", async (req, res) => {
     console.log("http://localhost:2025/get_delivered_orders");
+
+    // Default pagination parameters
+    const perPage = req.body.perPage || 10;
+    const page = parseInt(req.body.page) || 1;
+
     try {
-        // Find orders where is_delivered is true
-        let result = await SweetOrderDetails.find({ is_delivered: 1, is_paid: 0 });
+        // Count total records for pagination metadata
+        const totalRecords = await SweetOrderDetails.countDocuments({
+            is_delivered: 1,
+            is_paid: 0
+        });
+        const totalPages = Math.ceil(totalRecords / perPage);
+
+        // Fetch records for the current page with the specified limit
+        let result = await SweetOrderDetails.find(
+            { is_delivered: 1, is_paid: 0 }
+        )
+        .skip((page - 1) * perPage)
+        .limit(perPage);
 
         if (result.length > 0) {
             // Format created and modified fields to Indian Standard Time (IST)
             result = result.map(order => {
-                // Convert UTC date to IST and format
                 const formatDateToIST = (date) => {
                     return new Date(date).toLocaleString('en-IN', {
                         day: '2-digit',
@@ -1006,7 +1061,7 @@ app.get("/get_delivered_orders", async (req, res) => {
                         minute: '2-digit',
                         second: '2-digit',
                         hour12: true,
-                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                        timeZone: 'Asia/Kolkata'
                     });
                 };
 
@@ -1020,14 +1075,17 @@ app.get("/get_delivered_orders", async (req, res) => {
             res.status(200).json({
                 error: false,
                 code: 200,
-                message: "Packed orders retrieved successfully",
+                message: "Delivered orders retrieved successfully",
+                total_records: totalRecords,
+                total_pages: totalPages,
+                current_page: page,
                 data: result
             });
         } else {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "No packed orders found"
+                message: "No delivered orders found"
             });
         }
     } catch (error) {
@@ -1040,6 +1098,8 @@ app.get("/get_delivered_orders", async (req, res) => {
         });
     }
 });
+
+
 
 
 app.post("/update_sweet_order_paid", async (req, res) => {
@@ -1079,16 +1139,30 @@ app.post("/update_sweet_order_paid", async (req, res) => {
     }
 });
 
-app.get("/get_paid_orders", async (req, res) => {
+app.post("/get_paid_orders", async (req, res) => {
     console.log("http://localhost:2025/get_paid_orders");
+
+    // Default pagination parameters
+    const perPage = req.body.perPage || 10;
+    const page = parseInt(req.body.page) || 1;
+
     try {
-        // Find orders where is_paid is true
-        let result = await SweetOrderDetails.find({ is_paid: 1 });
+        // Count total records for pagination metadata
+        const totalRecords = await SweetOrderDetails.countDocuments({
+            is_paid: 1
+        });
+        const totalPages = Math.ceil(totalRecords / perPage);
+
+        // Fetch records for the current page with the specified limit
+        let result = await SweetOrderDetails.find(
+            { is_paid: 1 }
+        )
+        .skip((page - 1) * perPage)
+        .limit(perPage);
 
         if (result.length > 0) {
             // Format created and modified fields to Indian Standard Time (IST)
             result = result.map(order => {
-                // Convert UTC date to IST and format
                 const formatDateToIST = (date) => {
                     return new Date(date).toLocaleString('en-IN', {
                         day: '2-digit',
@@ -1098,7 +1172,7 @@ app.get("/get_paid_orders", async (req, res) => {
                         minute: '2-digit',
                         second: '2-digit',
                         hour12: true,
-                        timeZone: 'Asia/Kolkata'  // Ensure time zone is set to IST
+                        timeZone: 'Asia/Kolkata'
                     });
                 };
 
@@ -1112,14 +1186,17 @@ app.get("/get_paid_orders", async (req, res) => {
             res.status(200).json({
                 error: false,
                 code: 200,
-                message: "Packed orders retrieved successfully",
+                message: "Paid orders retrieved successfully",
+                total_records: totalRecords,
+                total_pages: totalPages,
+                current_page: page,
                 data: result
             });
         } else {
             res.status(404).json({
                 error: true,
                 code: 404,
-                message: "No packed orders found"
+                message: "No paid orders found"
             });
         }
     } catch (error) {
@@ -1132,6 +1209,7 @@ app.get("/get_paid_orders", async (req, res) => {
         });
     }
 });
+
 
 
 app.get("/get_sweets_aggregation", async (req, res) => {
