@@ -772,7 +772,7 @@ app.post("/update_sweet_order_packed", async (req, res) => {
         // Find the order by ID and update the is_packed field to true
         let result = await SweetOrderDetails.findOneAndUpdate(
             { _id: new ObjectId(orderId) },
-            { $set: { is_packed: 1, modified: new Date(), } },
+            { $set: { is_packed: 1,is_half_packed:0, modified: new Date(), } },
             { new: true }
         );
         // console.log(result,"<<<<<<<<<<<<<updattttttttt")
@@ -2417,7 +2417,7 @@ app.post('/update_sweets', async (req, res) => {
                     sum = sum + b.reduce((a, b) => { return a + b }, 0)
                 }
             })
-            console.log(sum)
+            console.log('packed sum',sum)
             if (sum == 0) {
                 result.is_packed = 1
                 result.is_half_packed = 0
