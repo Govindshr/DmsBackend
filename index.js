@@ -1506,14 +1506,12 @@ app.get("/get_sweets_aggregation", async (req, res) => {
 app.get("/get_packed_sweets_aggregation", async (req, res) => {
     console.log("http://localhost:2025/get_packed_sweets_aggregation");
     try {
-        // First aggregation for is_packed: 1 orders (fully packed)
+        // Fully packed orders
         let packedResult = await SweetOrderDetails.aggregate([
             { $match: { is_packed: 1 } },
             {
                 $project: {
-                    sweets: {
-                        $objectToArray: "$sweets"
-                    }
+                    sweets: { $objectToArray: "$sweets" }
                 }
             },
             { $unwind: "$sweets" },
@@ -1523,6 +1521,18 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
                     totalOneKg: { $sum: "$sweets.v.oneKg" },
                     totalHalfKg: { $sum: "$sweets.v.halfKg" },
                     totalQuarterKg: { $sum: "$sweets.v.quarterKg" },
+                    totalOtherWeight: {
+                        $push: {
+                            k: "$sweets.v.otherWeight",
+                            v: "$sweets.v.otherPackings"
+                        }
+                    },
+                    totalOtherWeight2: {
+                        $push: {
+                            k: "$sweets.v.otherWeight2",
+                            v: "$sweets.v.otherPackings2"
+                        }
+                    },
                     totalWeight: {
                         $sum: {
                             $add: [
@@ -1531,7 +1541,89 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
                                 { $multiply: ["$sweets.v.quarterKg", 0.25] }
                             ]
                         }
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    totalOtherWeight: {
+                        $arrayToObject: {
+                            $map: {
+                                input: {
+                                    $reduce: {
+                                        input: "$totalOtherWeight",
+                                        initialValue: [],
+                                        in: {
+                                            $concatArrays: [
+                                                "$$value",
+                                                [
+                                                    {
+                                                        k: { $toString: "$$this.k" },
+                                                        v: {
+                                                            $sum: {
+                                                                $map: {
+                                                                    input: {
+                                                                        $filter: {
+                                                                            input: "$totalOtherWeight",
+                                                                            as: "item",
+                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
+                                                                        }
+                                                                    },
+                                                                    as: "item",
+                                                                    in: "$$item.v"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                },
+                                as: "item",
+                                in: "$$item"
+                            }
+                        }
                     },
+                    totalOtherWeight2: {
+                        $arrayToObject: {
+                            $map: {
+                                input: {
+                                    $reduce: {
+                                        input: "$totalOtherWeight2",
+                                        initialValue: [],
+                                        in: {
+                                            $concatArrays: [
+                                                "$$value",
+                                                [
+                                                    {
+                                                        k: { $toString: "$$this.k" },
+                                                        v: {
+                                                            $sum: {
+                                                                $map: {
+                                                                    input: {
+                                                                        $filter: {
+                                                                            input: "$totalOtherWeight2",
+                                                                            as: "item",
+                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
+                                                                        }
+                                                                    },
+                                                                    as: "item",
+                                                                    in: "$$item.v"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                },
+                                as: "item",
+                                in: "$$item"
+                            }
+                        }
+                    }
                 }
             },
             {
@@ -1540,13 +1632,15 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
                     totalOneKg: 1,
                     totalHalfKg: 1,
                     totalQuarterKg: 1,
+                    totalOtherWeight: 1,
+                    totalOtherWeight2: 1,
                     totalWeight: 1,
                     _id: 0
                 }
             }
         ]);
 
-
+        // Partially packed orders
         let partialPackedResult = await SweetOrderDetails.aggregate([
             { $match: { is_packed: 0, remaining_order: { $ne: {} } } },
             {
@@ -1568,6 +1662,18 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
                     totalOneKg: { $sum: { $subtract: ["$sweetsArray.v.oneKg", "$remainingOrderArray.v.oneKg"] } },
                     totalHalfKg: { $sum: { $subtract: ["$sweetsArray.v.halfKg", "$remainingOrderArray.v.halfKg"] } },
                     totalQuarterKg: { $sum: { $subtract: ["$sweetsArray.v.quarterKg", "$remainingOrderArray.v.quarterKg"] } },
+                    totalOtherWeight: {
+                        $push: {
+                            k: "$sweetsArray.v.otherWeight",
+                            v: { $subtract: ["$sweetsArray.v.otherPackings", "$remainingOrderArray.v.otherPackings"] }
+                        }
+                    },
+                    totalOtherWeight2: {
+                        $push: {
+                            k: "$sweetsArray.v.otherWeight2",
+                            v: { $subtract: ["$sweetsArray.v.otherPackings2", "$remainingOrderArray.v.otherPackings2"] }
+                        }
+                    },
                     totalWeight: {
                         $sum: {
                             $add: [
@@ -1580,11 +1686,95 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
                 }
             },
             {
+                $addFields: {
+                    totalOtherWeight: {
+                        $arrayToObject: {
+                            $map: {
+                                input: {
+                                    $reduce: {
+                                        input: "$totalOtherWeight",
+                                        initialValue: [],
+                                        in: {
+                                            $concatArrays: [
+                                                "$$value",
+                                                [
+                                                    {
+                                                        k: { $toString: "$$this.k" },
+                                                        v: {
+                                                            $sum: {
+                                                                $map: {
+                                                                    input: {
+                                                                        $filter: {
+                                                                            input: "$totalOtherWeight",
+                                                                            as: "item",
+                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
+                                                                        }
+                                                                    },
+                                                                    as: "item",
+                                                                    in: "$$item.v"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                },
+                                as: "item",
+                                in: "$$item"
+                            }
+                        }
+                    },
+                    totalOtherWeight2: {
+                        $arrayToObject: {
+                            $map: {
+                                input: {
+                                    $reduce: {
+                                        input: "$totalOtherWeight2",
+                                        initialValue: [],
+                                        in: {
+                                            $concatArrays: [
+                                                "$$value",
+                                                [
+                                                    {
+                                                        k: { $toString: "$$this.k" },
+                                                        v: {
+                                                            $sum: {
+                                                                $map: {
+                                                                    input: {
+                                                                        $filter: {
+                                                                            input: "$totalOtherWeight2",
+                                                                            as: "item",
+                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
+                                                                        }
+                                                                    },
+                                                                    as: "item",
+                                                                    in: "$$item.v"
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                ]
+                                            ]
+                                        }
+                                    }
+                                },
+                                as: "item",
+                                in: "$$item"
+                            }
+                        }
+                    }
+                }
+            },
+            {
                 $project: {
                     sweetName: "$_id",
                     totalOneKg: 1,
                     totalHalfKg: 1,
                     totalQuarterKg: 1,
+                    totalOtherWeight: 1,
+                    totalOtherWeight2: 1,
                     totalWeight: 1,
                     _id: 0
                 }
@@ -1599,26 +1789,21 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
                 existing.totalHalfKg += item.totalHalfKg;
                 existing.totalQuarterKg += item.totalQuarterKg;
                 existing.totalWeight += item.totalWeight;
+
+                existing.totalOtherWeight = { ...existing.totalOtherWeight, ...item.totalOtherWeight };
+                existing.totalOtherWeight2 = { ...existing.totalOtherWeight2, ...item.totalOtherWeight2 };
             } else {
                 acc.push(item);
             }
             return acc;
         }, []);
 
-        if (combinedResult.length > 0) {
-            res.status(200).json({
-                error: false,
-                code: 200,
-                message: "Sweets aggregation retrieved successfully",
-                data: combinedResult
-            });
-        } else {
-            res.status(404).json({
-                error: true,
-                code: 404,
-                message: "No sweets data found"
-            });
-        }
+        res.status(200).json({
+            error: false,
+            code: 200,
+            message: "Sweets aggregation retrieved successfully",
+            data: combinedResult
+        });
     } catch (error) {
         console.error(error);
         res.status(400).json({
@@ -1629,6 +1814,8 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
         });
     }
 });
+
+
 
 
 app.post('/get_order_based_on_name', async (req, res) => {
