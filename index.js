@@ -509,7 +509,7 @@ app.post("/sweet_order_details", async (req, res) => {
     console.log("http://localhost:2025/sweet_order_details");
 
     try {
-        const { name, number, summary, sweets, payment_mode, retail_order } = req.body;
+        const { name, number, summary, sweets, payment_mode, retail_order ,received_amount} = req.body;
 
         // Retrieve the last order by sorting in descending order of `order_no`
         let lastOrder = await SweetOrderDetails.findOne({}).sort({ order_no: -1 });
@@ -522,6 +522,7 @@ app.post("/sweet_order_details", async (req, res) => {
             order_no: orderNo,
             name: name || "",
             payment_mode: payment_mode || "",
+            received_amount: received_amount || "",
             number: number || "",
             summary: summary || {},
             sweets: sweets || {},
@@ -1191,7 +1192,7 @@ app.post("/update_sweet_order_paid", async (req, res) => {
         // Find the order by ID and update the is_paid field to true
         let result = await SweetOrderDetails.findOneAndUpdate(
             { _id: new ObjectId(orderId) },
-            { $set: { is_paid: 1, received_amount: received_amount, payment_mode: payment_mode, updated_date: new Date() } },
+            { $set: { is_paid: 1,is_delivered:1,is_packed:1, received_amount: received_amount, payment_mode: payment_mode, updated_date: new Date() } },
             { new: true }
         );
 
