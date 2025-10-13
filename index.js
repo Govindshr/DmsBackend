@@ -506,60 +506,127 @@ app.post("/edit_order_details", async (req, res) => {
 });
 
 app.post("/sweet_order_details", async (req, res) => {
-    console.log("http://localhost:2025/sweet_order_details");
+  console.log("http://localhost:2025/sweet_order_details");
 
-    try {
-        const { name, number, summary, sweets, payment_mode, retail_order ,received_amount} = req.body;
+  try {
+    const { name, number, summary, sweets, payment_mode, retail_order, received_amount } = req.body;
 
-        // Retrieve the last order by sorting in descending order of `order_no`
-        let lastOrder = await SweetOrderDetails.findOne({}).sort({ order_no: -1 });
+    // Retrieve the last order number
+    let lastOrder = await SweetOrderDetails.findOne({}).sort({ order_no: -1 });
+    let orderNo = lastOrder ? lastOrder.order_no + 1 : 1;
 
-        // Determine the next order number
-        let orderNo = lastOrder ? lastOrder.order_no + 1 : 1;
+ let saveData = {
+  order_no: orderNo,
+  name: name || "",
+  payment_mode: payment_mode || "",
+  received_amount: received_amount || "",
+  number: number || "",
+  summary: summary || {},
+  sweets: sweets || {},
+  remaining_order: sweets || {},
+  retail_order: retail_order || false,
+  is_delivered: retail_order ? 1 : 0,
+  is_packed: retail_order ? 1 : 0,
+  // ✅ Only mark paid if retail_order is true AND amount > 0
+  is_paid: retail_order && received_amount && Number(received_amount) > 0 ? 1 : 0
+};
 
-        // Structure to save with conditional check for retail_order
-        let saveData = {
-            order_no: orderNo,
-            name: name || "",
-            payment_mode: payment_mode || "",
-            received_amount: received_amount || "",
-            number: number || "",
-            summary: summary || {},
-            sweets: sweets || {},
-            remaining_order: sweets || {},
-            retail_order: retail_order || false,
-            is_delivered: retail_order ? 1 : 0, // Set to 1 if retail_order is true
-            is_paid: retail_order ? 1 : 0,
-            is_packed: retail_order ? 1 : 0       // Set to 1 if retail_order is true
-        };
 
-        // Save the data to the database
-        let result = await SweetOrderDetails.create(saveData);
+    // ✅ STOCK CHECK before order creation
+    if (retail_order && sweets && typeof sweets === "object") {
+      for (const sweetName in sweets) {
+        const sweetData = sweets[sweetName];
+        if (!sweetData) continue;
 
-        if (result) {
-            res.status(200).json({
-                error: false,
-                code: 200,
-                message: "Sweets Details Saved Successfully",
-                data: result
-            });
-        } else {
-            res.status(404).json({
-                error: true,
-                code: 404,
-                message: "Details Not Saved"
-            });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(400).json({
+        const oneKg = sweetData.oneKg || 0;
+        const halfKg = (sweetData.halfKg || 0) * 0.5;
+        const quarterKg = (sweetData.quarterKg || 0) * 0.25;
+
+        const otherWeight = (sweetData.otherWeight || 0) / 1000;
+        const otherPackings = sweetData.otherPackings || 0;
+        const otherWeight2 = (sweetData.otherWeight2 || 0) / 1000;
+        const otherPackings2 = sweetData.otherPackings2 || 0;
+
+        const totalAmount =
+          oneKg +
+          halfKg +
+          quarterKg +
+          otherWeight * otherPackings +
+          otherWeight2 * otherPackings2;
+
+        const stock = await ExtraSweets.findOne({ sweet_name: sweetName });
+
+        if (!stock || stock.amount < totalAmount) {
+          return res.status(400).json({
             error: true,
-            code: 400,
-            message: "Something went wrong",
-            data: error
-        });
+            message: `❌ Not enough stock for ${sweetName}. Available: ${stock ? stock.amount : 0} kg`,
+          });
+        }
+      }
     }
+
+    // ✅ Now save order
+    let result = await SweetOrderDetails.create(saveData);
+
+    // ✅ If retail order → decrease stock
+    if (retail_order && sweets && typeof sweets === "object") {
+      console.log("Retail order detected → updating stock...");
+
+      for (const sweetName in sweets) {
+        const sweetData = sweets[sweetName];
+        if (!sweetData) continue;
+
+        const oneKg = sweetData.oneKg || 0;
+        const halfKg = (sweetData.halfKg || 0) * 0.5;
+        const quarterKg = (sweetData.quarterKg || 0) * 0.25;
+
+        const otherWeight = (sweetData.otherWeight || 0) / 1000;
+        const otherPackings = sweetData.otherPackings || 0;
+        const otherWeight2 = (sweetData.otherWeight2 || 0) / 1000;
+        const otherPackings2 = sweetData.otherPackings2 || 0;
+
+        const totalAmount =
+          oneKg +
+          halfKg +
+          quarterKg +
+          otherWeight * otherPackings +
+          otherWeight2 * otherPackings2;
+
+        await ExtraSweets.updateOne(
+          { sweet_name: sweetName },
+          { $inc: { amount: -totalAmount }, $set: { modified: new Date() } }
+        );
+
+        console.log(`✅ Stock updated for ${sweetName}: -${totalAmount} kg`);
+      }
+    }
+
+    // ✅ Response
+    if (result) {
+      return res.status(200).json({
+        error: false,
+        code: 200,
+        message: "Sweets Details Saved Successfully",
+        data: result,
+      });
+    } else {
+      return res.status(404).json({
+        error: true,
+        code: 404,
+        message: "Details Not Saved",
+      });
+    }
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({
+      error: true,
+      code: 400,
+      message: "Something went wrong",
+      data: error,
+    });
+  }
 });
+
 
 
 app.post("/update_sweet_order", async (req, res) => {
@@ -1504,315 +1571,183 @@ app.get("/get_sweets_aggregation", async (req, res) => {
 });
 
 app.get("/get_packed_sweets_aggregation", async (req, res) => {
-    console.log("http://localhost:2025/get_packed_sweets_aggregation");
-    try {
-        // Fully packed orders
-        let packedResult = await SweetOrderDetails.aggregate([
-            { $match: { is_packed: 1 } },
-            {
-                $project: {
-                    sweets: { $objectToArray: "$sweets" }
-                }
-            },
-            { $unwind: "$sweets" },
-            {
-                $group: {
-                    _id: "$sweets.k",
-                    totalOneKg: { $sum: "$sweets.v.oneKg" },
-                    totalHalfKg: { $sum: "$sweets.v.halfKg" },
-                    totalQuarterKg: { $sum: "$sweets.v.quarterKg" },
-                    totalOtherWeight: {
-                        $push: {
-                            k: "$sweets.v.otherWeight",
-                            v: "$sweets.v.otherPackings"
-                        }
-                    },
-                    totalOtherWeight2: {
-                        $push: {
-                            k: "$sweets.v.otherWeight2",
-                            v: "$sweets.v.otherPackings2"
-                        }
-                    },
-                    totalWeight: {
-                        $sum: {
-                            $add: [
-                                { $multiply: ["$sweets.v.oneKg", 1] },
-                                { $multiply: ["$sweets.v.halfKg", 0.5] },
-                                { $multiply: ["$sweets.v.quarterKg", 0.25] }
-                            ]
-                        }
-                    }
-                }
-            },
-            {
-                $addFields: {
-                    totalOtherWeight: {
-                        $arrayToObject: {
-                            $map: {
-                                input: {
-                                    $reduce: {
-                                        input: "$totalOtherWeight",
-                                        initialValue: [],
-                                        in: {
-                                            $concatArrays: [
-                                                "$$value",
-                                                [
-                                                    {
-                                                        k: { $toString: "$$this.k" },
-                                                        v: {
-                                                            $sum: {
-                                                                $map: {
-                                                                    input: {
-                                                                        $filter: {
-                                                                            input: "$totalOtherWeight",
-                                                                            as: "item",
-                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
-                                                                        }
-                                                                    },
-                                                                    as: "item",
-                                                                    in: "$$item.v"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                ]
-                                            ]
-                                        }
-                                    }
-                                },
-                                as: "item",
-                                in: "$$item"
-                            }
-                        }
-                    },
-                    totalOtherWeight2: {
-                        $arrayToObject: {
-                            $map: {
-                                input: {
-                                    $reduce: {
-                                        input: "$totalOtherWeight2",
-                                        initialValue: [],
-                                        in: {
-                                            $concatArrays: [
-                                                "$$value",
-                                                [
-                                                    {
-                                                        k: { $toString: "$$this.k" },
-                                                        v: {
-                                                            $sum: {
-                                                                $map: {
-                                                                    input: {
-                                                                        $filter: {
-                                                                            input: "$totalOtherWeight2",
-                                                                            as: "item",
-                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
-                                                                        }
-                                                                    },
-                                                                    as: "item",
-                                                                    in: "$$item.v"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                ]
-                                            ]
-                                        }
-                                    }
-                                },
-                                as: "item",
-                                in: "$$item"
-                            }
-                        }
-                    }
-                }
-            },
-            {
-                $project: {
-                    sweetName: "$_id",
-                    totalOneKg: 1,
-                    totalHalfKg: 1,
-                    totalQuarterKg: 1,
-                    totalOtherWeight: 1,
-                    totalOtherWeight2: 1,
-                    totalWeight: 1,
-                    _id: 0
-                }
-            }
-        ]);
+  console.log("http://localhost:2025/get_packed_sweets_aggregation");
 
-        // Partially packed orders
-        let partialPackedResult = await SweetOrderDetails.aggregate([
-            { $match: { is_packed: 0, remaining_order: { $ne: {} } } },
-            {
-                $project: {
-                    sweetsArray: { $objectToArray: "$sweets" },
-                    remainingOrderArray: { $objectToArray: "$remaining_order" }
-                }
-            },
-            { $unwind: "$sweetsArray" },
-            { $unwind: "$remainingOrderArray" },
-            {
-                $match: {
-                    $expr: { $eq: ["$sweetsArray.k", "$remainingOrderArray.k"] }
-                }
-            },
-            {
-                $group: {
-                    _id: "$sweetsArray.k",
-                    totalOneKg: { $sum: { $subtract: ["$sweetsArray.v.oneKg", "$remainingOrderArray.v.oneKg"] } },
-                    totalHalfKg: { $sum: { $subtract: ["$sweetsArray.v.halfKg", "$remainingOrderArray.v.halfKg"] } },
-                    totalQuarterKg: { $sum: { $subtract: ["$sweetsArray.v.quarterKg", "$remainingOrderArray.v.quarterKg"] } },
-                    totalOtherWeight: {
-                        $push: {
-                            k: "$sweetsArray.v.otherWeight",
-                            v: { $subtract: ["$sweetsArray.v.otherPackings", "$remainingOrderArray.v.otherPackings"] }
-                        }
-                    },
-                    totalOtherWeight2: {
-                        $push: {
-                            k: "$sweetsArray.v.otherWeight2",
-                            v: { $subtract: ["$sweetsArray.v.otherPackings2", "$remainingOrderArray.v.otherPackings2"] }
-                        }
-                    },
-                    totalWeight: {
-                        $sum: {
-                            $add: [
-                                { $multiply: [{ $subtract: ["$sweetsArray.v.oneKg", "$remainingOrderArray.v.oneKg"] }, 1] },
-                                { $multiply: [{ $subtract: ["$sweetsArray.v.halfKg", "$remainingOrderArray.v.halfKg"] }, 0.5] },
-                                { $multiply: [{ $subtract: ["$sweetsArray.v.quarterKg", "$remainingOrderArray.v.quarterKg"] }, 0.25] }
-                            ]
-                        }
-                    }
-                }
-            },
-            {
-                $addFields: {
-                    totalOtherWeight: {
-                        $arrayToObject: {
-                            $map: {
-                                input: {
-                                    $reduce: {
-                                        input: "$totalOtherWeight",
-                                        initialValue: [],
-                                        in: {
-                                            $concatArrays: [
-                                                "$$value",
-                                                [
-                                                    {
-                                                        k: { $toString: "$$this.k" },
-                                                        v: {
-                                                            $sum: {
-                                                                $map: {
-                                                                    input: {
-                                                                        $filter: {
-                                                                            input: "$totalOtherWeight",
-                                                                            as: "item",
-                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
-                                                                        }
-                                                                    },
-                                                                    as: "item",
-                                                                    in: "$$item.v"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                ]
-                                            ]
-                                        }
-                                    }
-                                },
-                                as: "item",
-                                in: "$$item"
-                            }
-                        }
-                    },
-                    totalOtherWeight2: {
-                        $arrayToObject: {
-                            $map: {
-                                input: {
-                                    $reduce: {
-                                        input: "$totalOtherWeight2",
-                                        initialValue: [],
-                                        in: {
-                                            $concatArrays: [
-                                                "$$value",
-                                                [
-                                                    {
-                                                        k: { $toString: "$$this.k" },
-                                                        v: {
-                                                            $sum: {
-                                                                $map: {
-                                                                    input: {
-                                                                        $filter: {
-                                                                            input: "$totalOtherWeight2",
-                                                                            as: "item",
-                                                                            cond: { $eq: ["$$item.k", "$$this.k"] }
-                                                                        }
-                                                                    },
-                                                                    as: "item",
-                                                                    in: "$$item.v"
-                                                                }
-                                                            }
-                                                        }
-                                                    }
-                                                ]
-                                            ]
-                                        }
-                                    }
-                                },
-                                as: "item",
-                                in: "$$item"
-                            }
-                        }
-                    }
-                }
-            },
-            {
-                $project: {
-                    sweetName: "$_id",
-                    totalOneKg: 1,
-                    totalHalfKg: 1,
-                    totalQuarterKg: 1,
-                    totalOtherWeight: 1,
-                    totalOtherWeight2: 1,
-                    totalWeight: 1,
-                    _id: 0
-                }
-            }
-        ]);
+  try {
+    // Fetch all half-packed or packed orders
+    const orders = await SweetOrderDetails.find({
+      is_deleted: 0,
+      $or: [{ is_packed: 1 }, { is_half_packed: 1 }]
+    }).lean();
 
-        // Combine packedResult and partialPackedResult
-        const combinedResult = [...packedResult, ...partialPackedResult].reduce((acc, item) => {
-            const existing = acc.find(i => i.sweetName === item.sweetName);
-            if (existing) {
-                existing.totalOneKg += item.totalOneKg;
-                existing.totalHalfKg += item.totalHalfKg;
-                existing.totalQuarterKg += item.totalQuarterKg;
-                existing.totalWeight += item.totalWeight;
+    const resultMap = {};
 
-                existing.totalOtherWeight = { ...existing.totalOtherWeight, ...item.totalOtherWeight };
-                existing.totalOtherWeight2 = { ...existing.totalOtherWeight2, ...item.totalOtherWeight2 };
-            } else {
-                acc.push(item);
-            }
-            return acc;
-        }, []);
+    orders.forEach(order => {
+      const sweets = order.sweets || {};
+      const remaining = order.remaining_order || {};
 
-        res.status(200).json({
-            error: false,
-            code: 200,
-            message: "Sweets aggregation retrieved successfully",
-            data: combinedResult
-        });
-    } catch (error) {
-        console.error(error);
-        res.status(400).json({
-            error: true,
-            code: 400,
-            message: "Something went wrong",
-            data: error
-        });
-    }
+      Object.keys(sweets).forEach(sweetName => {
+        const s = sweets[sweetName] || {};
+        const r = remaining[sweetName] || {};
+
+        // Calculate difference (packed quantity)
+        const diff = {
+          oneKg: Math.max((s.oneKg || 0) - (r.oneKg || 0), 0),
+          halfKg: Math.max((s.halfKg || 0) - (r.halfKg || 0), 0),
+          quarterKg: Math.max((s.quarterKg || 0) - (r.quarterKg || 0), 0),
+          otherPackings: Math.max((s.otherPackings || 0) - (r.otherPackings || 0), 0),
+          otherPackings2: Math.max((s.otherPackings2 || 0) - (r.otherPackings2 || 0), 0)
+        };
+
+        const totalWeight =
+          diff.oneKg * 1 + diff.halfKg * 0.5 + diff.quarterKg * 0.25;
+
+        if (!resultMap[sweetName]) {
+          resultMap[sweetName] = {
+            sweetName,
+            totalOneKg: 0,
+            totalHalfKg: 0,
+            totalQuarterKg: 0,
+            totalOtherWeight: {},
+            totalOtherWeight2: {},
+            totalOtherPackings: 0,
+            totalOtherPackings2: 0,
+            totalWeight: 0
+          };
+        }
+
+        // Add computed differences
+        resultMap[sweetName].totalOneKg += diff.oneKg;
+        resultMap[sweetName].totalHalfKg += diff.halfKg;
+        resultMap[sweetName].totalQuarterKg += diff.quarterKg;
+        resultMap[sweetName].totalWeight += totalWeight;
+
+        // Handle other weights
+        const otherWeightKey = (s.otherWeight || 0).toString();
+        const otherWeight2Key = (s.otherWeight2 || 0).toString();
+
+        if (diff.otherPackings > 0) {
+          resultMap[sweetName].totalOtherWeight[otherWeightKey] =
+            (resultMap[sweetName].totalOtherWeight[otherWeightKey] || 0) +
+            diff.otherPackings;
+          resultMap[sweetName].totalOtherPackings += diff.otherPackings;
+        }
+
+        if (diff.otherPackings2 > 0) {
+          resultMap[sweetName].totalOtherWeight2[otherWeight2Key] =
+            (resultMap[sweetName].totalOtherWeight2[otherWeight2Key] || 0) +
+            diff.otherPackings2;
+          resultMap[sweetName].totalOtherPackings2 += diff.otherPackings2;
+        }
+      });
+    });
+
+    const finalResult = Object.values(resultMap);
+
+    return res.status(200).json({
+      error: false,
+      code: 200,
+      message: "Sweets aggregation retrieved successfully",
+      data: finalResult
+    });
+  } catch (error) {
+    console.error("Aggregation Error:", error);
+    return res.status(400).json({
+      error: true,
+      code: 400,
+      message: "Something went wrong",
+      data: error.message
+    });
+  }
+});
+
+
+app.get("/get_dashboard_data", async (req, res) => {
+  console.log("http://localhost:2025/get_dashboard_data");
+
+  try {
+    // Fetch all active orders
+    const orders = await SweetOrderDetails.find({ is_deleted: 0 }).lean();
+
+    // Fetch packed sweets aggregation
+    const packedAggregation = await SweetOrderDetails.find({
+      is_deleted: 0,
+      $or: [{ is_packed: 1 }, { is_half_packed: 1 }]
+    }).lean();
+
+    const totalsMap = {};
+    const packedMap = {};
+
+    // --- 1️⃣ Calculate total weights (from all orders) ---
+    orders.forEach(order => {
+      const sweets = order.sweets || {};
+      Object.keys(sweets).forEach(sweetName => {
+        const s = sweets[sweetName] || {};
+        const totalWeight =
+          (s.oneKg || 0) * 1 +
+          (s.halfKg || 0) * 0.5 +
+          (s.quarterKg || 0) * 0.25;
+
+        if (!totalsMap[sweetName]) totalsMap[sweetName] = 0;
+        totalsMap[sweetName] += totalWeight;
+      });
+    });
+
+    // --- 2️⃣ Calculate packed weights (difference: sweets - remaining) ---
+    packedAggregation.forEach(order => {
+      const sweets = order.sweets || {};
+      const remaining = order.remaining_order || {};
+
+      Object.keys(sweets).forEach(sweetName => {
+        const s = sweets[sweetName] || {};
+        const r = remaining[sweetName] || {};
+
+        const diff =
+          ((s.oneKg || 0) - (r.oneKg || 0)) * 1 +
+          ((s.halfKg || 0) - (r.halfKg || 0)) * 0.5 +
+          ((s.quarterKg || 0) - (r.quarterKg || 0)) * 0.25;
+
+        if (!packedMap[sweetName]) packedMap[sweetName] = 0;
+        packedMap[sweetName] += Math.max(diff, 0);
+      });
+    });
+
+    // --- 3️⃣ Merge results and compute final data ---
+    const allSweetNames = new Set([
+      ...Object.keys(totalsMap),
+      ...Object.keys(packedMap)
+    ]);
+
+    const finalData = Array.from(allSweetNames).map(name => {
+      const total = totalsMap[name] || 0;
+      const packed = packedMap[name] || 0;
+      const remaining = Math.max(total - packed, 0);
+      const percentage = total > 0 ? (packed / total) * 100 : 0;
+
+      return {
+        sweetName: name,
+        totalWeight: Number(total.toFixed(2)),
+        packedWeight: Number(packed.toFixed(2)),
+        remainingWeight: Number(remaining.toFixed(2)),
+        percentage: Number(percentage.toFixed(2))
+      };
+    });
+
+    return res.status(200).json({
+      error: false,
+      code: 200,
+      message: "Dashboard data fetched successfully",
+      data: finalData
+    });
+  } catch (error) {
+    console.error("Dashboard aggregation error:", error);
+    return res.status(400).json({
+      error: true,
+      code: 400,
+      message: "Something went wrong",
+      data: error.message
+    });
+  }
 });
 
 
