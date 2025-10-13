@@ -832,41 +832,64 @@ app.post("/view_sweets_orders_by_id", async (req, res) => {
 
 
 app.post("/update_sweet_order_packed", async (req, res) => {
-    console.log("http://localhost:2025/update_sweet_order_packed");
-    const { orderId } = req.body; // Extract the orderId from the request body
+  console.log("http://localhost:2025/update_sweet_order_packed");
+  const { orderId } = req.body;
 
-    try {
-        // Find the order by ID and update the is_packed field to true
-        let result = await SweetOrderDetails.findOneAndUpdate(
-            { _id: new ObjectId(orderId) },
-            { $set: { is_packed: 1,is_half_packed:0, modified: new Date(), } },
-            { new: true }
-        );
-        // console.log(result,"<<<<<<<<<<<<<updattttttttt")
-        if (result) {
-            res.status(200).json({
-                error: false,
-                code: 200,
-                message: "Order status updated to packed successfully",
-                data: result
-            });
-        } else {
-            res.status(404).json({
-                error: true,
-                code: 404,
-                message: "Order not found"
-            });
-        }
-    } catch (error) {
-        console.error(error);
-        res.status(400).json({
-            error: true,
-            code: 400,
-            message: "Something went wrong",
-            data: error
-        });
+  try {
+    // Get full order data
+    const order = await SweetOrderDetails.findById(orderId);
+    if (!order) {
+      return res.status(404).json({
+        error: true,
+        code: 404,
+        message: "Order not found",
+      });
     }
+
+    // ✅ Set remaining_order = 0 for all sweets (fully packed)
+    const clearedRemaining = {};
+    Object.keys(order.sweets || {}).forEach((sweetName) => {
+      clearedRemaining[sweetName] = {};
+      Object.keys(order.sweets[sweetName]).forEach((key) => {
+        if (typeof order.sweets[sweetName][key] === "number") {
+          clearedRemaining[sweetName][key] = 0;
+        } else {
+          clearedRemaining[sweetName][key] = order.sweets[sweetName][key];
+        }
+      });
+    });
+
+    // ✅ Update DB
+    const result = await SweetOrderDetails.findByIdAndUpdate(
+      orderId,
+      {
+        $set: {
+          is_packed: 1,
+          is_half_packed: 0,
+          remaining_order: clearedRemaining,
+          modified: new Date(),
+        },
+      },
+      { new: true }
+    );
+
+    res.status(200).json({
+      error: false,
+      code: 200,
+      message: "Order marked as fully packed successfully",
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({
+      error: true,
+      code: 400,
+      message: "Something went wrong",
+      data: error,
+    });
+  }
 });
+
 
 app.post("/get_packed_orders", async (req, res) => {
     console.log("http://localhost:2025/get_packed_orders");
