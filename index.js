@@ -641,7 +641,8 @@ app.post("/update_sweet_order", async (req, res) => {
             name: name || "",
             number: number || "",
             summary: summary || {},
-            sweets: sweets || {}
+            sweets: sweets || {},
+            remaining_order:sweets || {}
         };
 
         // Find the order by order_id
