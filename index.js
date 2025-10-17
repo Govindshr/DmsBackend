@@ -860,6 +860,9 @@ app.post("/update_sweet_order_packed", async (req, res) => {
       });
     });
 
+    // Stock deduction is handled by the separate /update_stock endpoint, which is
+    // called before this API in the box-icon (complete pack) flow. Avoid double-deduction here.
+
     // ✅ Update DB
     const result = await SweetOrderDetails.findByIdAndUpdate(
       orderId,
@@ -1280,12 +1283,60 @@ app.post("/update_sweet_order_paid", async (req, res) => {
     const { orderId, received_amount, payment_mode } = req.body; // Extract the orderId from the request body
 
     try {
-        // Find the order by ID and update the is_paid field to true
+        // Read the order first to compute cleared remaining_order (all zeros)
+        const order = await SweetOrderDetails.findById(orderId).lean();
+        if (!order) {
+            return res.status(404).json({ error: true, code: 404, message: "Order not found" });
+        }
+
+        const clearedRemaining = {};
+        // Calculate stock reduction for any items still remaining
+        const reductions = {};
+        Object.keys(order.sweets || {}).forEach((sweetName) => {
+            clearedRemaining[sweetName] = {};
+            const sweet = order.sweets[sweetName] || {};
+            const rem = (order.remaining_order && order.remaining_order[sweetName]) || {};
+            Object.keys(sweet).forEach((key) => {
+                // Zero out numeric counts; keep meta fields like price/weights as-is
+                if (typeof sweet[key] === "number") {
+                    clearedRemaining[sweetName][key] = 0;
+                } else {
+                    clearedRemaining[sweetName][key] = sweet[key];
+                }
+            });
+
+            // Compute reduction in kg based on remaining counts (if any)
+            const one = Number(rem.oneKg || 0) * 1;
+            const half = Number(rem.halfKg || 0) * 0.5;
+            const quarter = Number(rem.quarterKg || 0) * 0.25;
+            const other1 = Number(rem.otherPackings || 0) * (Number(sweet.otherWeight || 0) / 1000);
+            const other2 = Number(rem.otherPackings2 || 0) * (Number(sweet.otherWeight2 || 0) / 1000);
+            const totalKg = one + half + quarter + other1 + other2;
+            if (totalKg > 0) {
+                reductions[sweetName] = (reductions[sweetName] || 0) + totalKg;
+            }
+        });
+
+        // Update: mark all final flags and zero out remaining_order
         let result = await SweetOrderDetails.findOneAndUpdate(
             { _id: new ObjectId(orderId) },
-            { $set: { is_paid: 1,is_delivered:1,is_packed:1, received_amount: received_amount, payment_mode: payment_mode, updated_date: new Date() } },
+            { $set: { 
+                is_paid: 1,
+                is_delivered: 1,
+                is_packed: 1,
+                is_half_packed: 0,
+                remaining_order: clearedRemaining,
+                received_amount: received_amount,
+                payment_mode: payment_mode,
+                updated_date: new Date()
+            } },
             { new: true }
         );
+
+        // Apply stock reductions for any remaining quantities that were just finalized
+        for (const [sweetName, kg] of Object.entries(reductions)) {
+            await ExtraSweets.updateOne({ sweet_name: sweetName }, { $inc: { amount: -kg } });
+        }
 
         if (result) {
             res.status(200).json({
@@ -1612,7 +1663,18 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
 
       Object.keys(sweets).forEach(sweetName => {
         const s = sweets[sweetName] || {};
-        const r = remaining[sweetName] || {};
+        let r = remaining[sweetName] || {};
+
+        // If order is marked fully packed, treat remaining as zero for all numeric counts
+        if (order.is_packed === 1) {
+          r = {
+            oneKg: 0,
+            halfKg: 0,
+            quarterKg: 0,
+            otherPackings: 0,
+            otherPackings2: 0,
+          };
+        }
 
         // Calculate difference (packed quantity)
         const diff = {
@@ -1622,6 +1684,14 @@ app.get("/get_packed_sweets_aggregation", async (req, res) => {
           otherPackings: Math.max((s.otherPackings || 0) - (r.otherPackings || 0), 0),
           otherPackings2: Math.max((s.otherPackings2 || 0) - (r.otherPackings2 || 0), 0)
         };
+
+        // ✅ Only process if there's actually something packed (diff > 0)
+        const hasPackedItems = diff.oneKg > 0 || diff.halfKg > 0 || diff.quarterKg > 0 || 
+                              diff.otherPackings > 0 || diff.otherPackings2 > 0;
+
+        if (!hasPackedItems) {
+          return; // Skip this sweet if nothing is packed
+        }
 
         const totalWeight =
           diff.oneKg * 1 + diff.halfKg * 0.5 + diff.quarterKg * 0.25;
@@ -1724,15 +1794,29 @@ app.get("/get_dashboard_data", async (req, res) => {
 
       Object.keys(sweets).forEach(sweetName => {
         const s = sweets[sweetName] || {};
-        const r = remaining[sweetName] || {};
+        let r = remaining[sweetName] || {};
+
+        // If order is marked fully packed, treat remaining as zero for all numeric counts
+        if (order.is_packed === 1) {
+          r = {
+            oneKg: 0,
+            halfKg: 0,
+            quarterKg: 0,
+            otherPackings: 0,
+            otherPackings2: 0,
+          };
+        }
 
         const diff =
           ((s.oneKg || 0) - (r.oneKg || 0)) * 1 +
           ((s.halfKg || 0) - (r.halfKg || 0)) * 0.5 +
           ((s.quarterKg || 0) - (r.quarterKg || 0)) * 0.25;
 
-        if (!packedMap[sweetName]) packedMap[sweetName] = 0;
-        packedMap[sweetName] += Math.max(diff, 0);
+        // ✅ Only add to packed if there's actually something packed (diff > 0)
+        if (diff > 0) {
+          if (!packedMap[sweetName]) packedMap[sweetName] = 0;
+          packedMap[sweetName] += diff;
+        }
       });
     });
 
@@ -2031,30 +2115,81 @@ app.post('/delete_order', async (req, res) => {
 
 app.post('/update_remaining_order', async (req, res) => {
     const order_id = req.body.order_id;
-    const remaining_order = req.body.remaining_order ? req.body.remaining_order : {};
-    const is_half_packed = req.body.is_half_packed ? req.body.is_half_packed : 0;
-
+    // payload represents counts to pack now (not the final remaining). We'll decrement remaining and stock.
+    const packPayload = req.body.remaining_order ? req.body.remaining_order : {};
     try {
-        const result = await SweetOrderDetails.updateOne(
-            { _id: new ObjectId(order_id) },
-            { $set: { remaining_order: remaining_order, is_half_packed: is_half_packed } }
-        );
-
-        if (!result) {
-            res.status(404).json({
-                error: true,
-                code: 404,
-                message: "Order not found"
-            });
+        const order = await SweetOrderDetails.findOne({ _id: new ObjectId(order_id) });
+        if (!order) {
+            return res.status(404).json({ error: true, code: 404, message: "Order not found" });
         }
 
-        res.status(200).json({
-            error: false,
-            code: 200,
-            message: " Remaining Order  updated successfully",
+        const currentRemaining = order.remaining_order || {};
+        const sweets = order.sweets || {};
+
+        // Track stock reduction per sweet (in kg)
+        const reduceBySweet = {};
+
+        Object.keys(packPayload).forEach((sweetName) => {
+            const pack = packPayload[sweetName] || {};
+            const remain = currentRemaining[sweetName] || {};
+            const s = sweets[sweetName] || {};
+
+            const dec = (field) => {
+                const toPack = Number(pack[field] || 0);
+                const current = Number(remain[field] || 0);
+                const newVal = Math.max(current - toPack, 0);
+                remain[field] = newVal;
+                return Math.max(Math.min(toPack, current), 0);
+            };
+
+            const pOne = dec('oneKg');
+            const pHalf = dec('halfKg');
+            const pQuarter = dec('quarterKg');
+            const pOther = dec('otherPackings');
+            const pOther2 = dec('otherPackings2');
+
+            // compute kg reduced for this sweet
+            const kg = pOne * 1
+                + pHalf * 0.5
+                + pQuarter * 0.25
+                + (pOther * ((s.otherWeight || 0) / 1000))
+                + (pOther2 * ((s.otherWeight2 || 0) / 1000));
+            if (kg > 0) {
+                reduceBySweet[sweetName] = (reduceBySweet[sweetName] || 0) + kg;
+            }
+
+            currentRemaining[sweetName] = {
+                ...currentRemaining[sweetName],
+                ...remain
+            };
         });
-        console.log("Order updated successfully")
+
+        // Recompute packed flags
+        let sum = 0;
+        Object.keys(currentRemaining).forEach((sweetKey) => {
+            const r = currentRemaining[sweetKey] || {};
+            sum += (r.oneKg || 0) + (r.halfKg || 0) + (r.quarterKg || 0) + (r.otherPackings || 0) + (r.otherPackings2 || 0);
+        });
+
+        const flagUpdates = { remaining_order: currentRemaining };
+        if (sum === 0) {
+            flagUpdates.is_packed = 1;
+            flagUpdates.is_half_packed = 0;
+        } else {
+            flagUpdates.is_packed = 0;
+            flagUpdates.is_half_packed = 1;
+        }
+
+        await SweetOrderDetails.updateOne({ _id: new ObjectId(order_id) }, { $set: flagUpdates });
+
+        // Apply stock reductions
+        for (const [sweetName, kg] of Object.entries(reduceBySweet)) {
+            await ExtraSweets.updateOne({ sweet_name: sweetName }, { $inc: { amount: -kg } });
+        }
+
+        res.status(200).json({ error: false, code: 200, message: 'Remaining updated and stock adjusted' });
     } catch (error) {
+        console.log(error)
         res.status(500).json({ error: 'Server error' });
     }
 });
@@ -2374,15 +2509,16 @@ app.post('/update_sweets', async (req, res) => {
         } else {
             let a = result.remaining_order[sweet_name][box]
             result.remaining_order[sweet_name][box] = a - count
-            let all = Object.keys(result.remaining_order)
+            // Recalculate remaining total boxes across all sweets by summing only count fields
+            // (Exclude non-count fields like otherWeight/otherWeight2 in grams, price, totalWeight)
             let sum = 0
-            all.forEach((ele) => {
-                console.log(ele)
-                if (ele != "totalWeight" && ele != "price") {
-                    let b = Object.values(result.remaining_order[ele])
-                    b.splice(7, 2)
-                    sum = sum + b.reduce((a, b) => { return a + b }, 0)
-                }
+            Object.keys(result.remaining_order).forEach((sweetKey) => {
+                const remainingForSweet = result.remaining_order[sweetKey] || {}
+                sum += (remainingForSweet.oneKg || 0)
+                    + (remainingForSweet.halfKg || 0)
+                    + (remainingForSweet.quarterKg || 0)
+                    + (remainingForSweet.otherPackings || 0)
+                    + (remainingForSweet.otherPackings2 || 0)
             })
             console.log('packed sum',sum)
             if (sum == 0) {
@@ -2392,10 +2528,21 @@ app.post('/update_sweets', async (req, res) => {
                 result.is_half_packed = 1
             }
 
+            // Compute how much stock to reduce in kilograms based on box type
+            const sweetDetail = (result.sweets && result.sweets[sweet_name]) ? result.sweets[sweet_name] : {};
+            let kgPerUnit = 0;
+            if (box === 'oneKg') kgPerUnit = 1;
+            else if (box === 'halfKg') kgPerUnit = 0.5;
+            else if (box === 'quarterKg') kgPerUnit = 0.25;
+            else if (box === 'otherPackings') kgPerUnit = ((sweetDetail.otherWeight || 0) / 1000);
+            else if (box === 'otherPackings2') kgPerUnit = ((sweetDetail.otherWeight2 || 0) / 1000);
+
+            const amountToReduce = (Number(count) || 0) * kgPerUnit;
+
             // Use Promise.all to handle multiple async operations
             await Promise.all([
                 SweetOrderDetails.updateOne({ _id: new ObjectId(order_id) }, { $set: result }),
-                ExtraSweets.updateOne({ sweet_name: sweet_name }, { $inc: { amount: count * -1 } })
+                amountToReduce > 0 ? ExtraSweets.updateOne({ sweet_name: sweet_name }, { $inc: { amount: -amountToReduce } }) : Promise.resolve()
             ]);
 
             return res.status(200).json({
