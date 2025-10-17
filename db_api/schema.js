@@ -56,7 +56,7 @@ const OerderSchema = new mongoose.Schema({
 OrderDetails = mongoose.model("order_details", OerderSchema);
 
 const SweetOrderSchema = new mongoose.Schema({
-    order_no:Number,
+    order_no: { type: String, required: true }, // ✅ FIXED — can hold both numbers and "R-x"
     name: String,
     number: String,
     payment_mode: String,
@@ -64,17 +64,17 @@ const SweetOrderSchema = new mongoose.Schema({
     summary: {},
     sweets: {},
     remaining_order: {},
-    received_amount : { type: Number, default: null },
-    is_packed : { type: Number, default: 0 },
-    is_delivered : { type: Number, default: 0 },
-    is_half_packed : { type: Number, default: 0 },
-    is_paid : { type: Number, default: 0 },
+    received_amount: { type: Number, default: null },
+    is_packed: { type: Number, default: 0 },
+    is_delivered: { type: Number, default: 0 },
+    is_half_packed: { type: Number, default: 0 },
+    is_paid: { type: Number, default: 0 },
     is_deleted: { type: Number, default: 0 },
     status: { type: Number, default: 0 },
     created: { type: Date, default: Date.now },
-    modified: { type: Date, default: Date.now }
-
+    modified: { type: Date, default: Date.now },
 });
+
 SweetOrderDetails = mongoose.model("sweets_details", SweetOrderSchema);
 
 const expenceSchema = new mongoose.Schema({

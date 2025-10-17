@@ -509,14 +509,43 @@ app.post("/sweet_order_details", async (req, res) => {
   console.log("http://localhost:2025/sweet_order_details");
 
   try {
+
+     let order_no;
+
+    if (req.body.retail_order === true) {
+      // Retail order: find last retail order
+      const lastRetail = await SweetOrderDetails.findOne({ retail_order: true })
+        .sort({ created: -1 })
+        .select("order_no");
+
+      if (lastRetail && lastRetail.order_no && lastRetail.order_no.startsWith("R-")) {
+        const lastNum = parseInt(lastRetail.order_no.split("R-")[1]) || 0;
+        order_no = `R-${lastNum + 1}`;
+      } else {
+        order_no = "R-1";
+      }
+    } else {
+      // Normal order: find last numeric order
+      const lastNormal = await SweetOrderDetails.findOne({ retail_order: { $ne: true } })
+        .sort({ created: -1 })
+        .select("order_no");
+
+      if (lastNormal && !isNaN(lastNormal.order_no)) {
+        order_no = Number(lastNormal.order_no) + 1;
+      } else {
+        order_no = 1;
+      }
+    }
+
+    // attach the generated order_no to request
+    req.body.order_no = order_no;
+
     const { name, number, summary, sweets, payment_mode, retail_order, received_amount } = req.body;
 
-    // Retrieve the last order number
-    let lastOrder = await SweetOrderDetails.findOne({}).sort({ order_no: -1 });
-    let orderNo = lastOrder ? lastOrder.order_no + 1 : 1;
+   
 
  let saveData = {
-  order_no: orderNo,
+  order_no: order_no, 
   name: name || "",
   payment_mode: payment_mode || "",
   received_amount: received_amount || "",
