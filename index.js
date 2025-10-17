@@ -554,6 +554,11 @@ app.post("/sweet_order_details", async (req, res) => {
           otherWeight * otherPackings +
           otherWeight2 * otherPackings2;
 
+        // Skip stock check for sweets with zero requested amount
+        if (totalAmount <= 0) {
+          continue;
+        }
+
         const stock = await ExtraSweets.findOne({ sweet_name: sweetName });
 
         if (!stock || stock.amount < totalAmount) {
@@ -591,6 +596,9 @@ app.post("/sweet_order_details", async (req, res) => {
           quarterKg +
           otherWeight * otherPackings +
           otherWeight2 * otherPackings2;
+
+        // Skip deduction if nothing requested for this sweet
+        if (totalAmount <= 0) continue;
 
         await ExtraSweets.updateOne(
           { sweet_name: sweetName },
