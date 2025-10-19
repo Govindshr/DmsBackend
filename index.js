@@ -530,22 +530,24 @@ app.post("/sweet_order_details", async (req, res) => {
         .sort({ created: -1 })
         .select("order_no");
 
-      if (lastNormal && !isNaN(lastNormal.order_no)) {
-        order_no = Number(lastNormal.order_no) + 1;
-      } else {
-        order_no = 1;
-      }
+     if (lastNormal && !isNaN(lastNormal.order_no)) {
+  order_no = String(Number(lastNormal.order_no) + 1);
+} else {
+  order_no = "1";
+}
+
     }
 
     // attach the generated order_no to request
-    req.body.order_no = order_no;
+   req.body.order_no = String(order_no);
+
 
     const { name, number, summary, sweets, payment_mode, retail_order, received_amount } = req.body;
 
    
 
  let saveData = {
-  order_no: order_no, 
+order_no: String(order_no),
   name: name || "",
   payment_mode: payment_mode || "",
   received_amount: received_amount || "",
