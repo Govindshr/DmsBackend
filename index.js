@@ -1901,46 +1901,46 @@ app.get("/get_dashboard_data", async (req, res) => {
 app.post('/get_order_based_on_name', async (req, res) => {
     console.log("http://localhost:2025/get_order_based_on_name");
 
-    const name = req.body.name || "";
+    const nameOrOrder = req.body.name || "";
     const type = req.body.type || "";
     const perPage = req.body.perPage || 10;
     const page = parseInt(req.body.page) || 1;
 
     try {
-        const regex = new RegExp(name, 'i');
-        let searchCondition = { name: regex };
+        const regex = new RegExp(nameOrOrder.trim(), 'i');
 
+        // ✅ Match either name OR order number (partial & case-insensitive)
+        let searchCondition = {
+            $or: [
+                { name: regex },
+                { order_no: regex }
+            ]
+        };
+
+        // ✅ Add filter by order status type
         if (type === "packed") {
-            searchCondition.is_packed = 1;
-            searchCondition.is_delivered = 0;
-            searchCondition.is_paid = 0;
+            Object.assign(searchCondition, { is_packed: 1, is_delivered: 0, is_paid: 0 });
         } else if (type === "initial") {
-            searchCondition.is_packed = 0;
-            searchCondition.is_delivered = 0;
-            searchCondition.is_paid = 0;
+            Object.assign(searchCondition, { is_packed: 0, is_delivered: 0, is_paid: 0 });
         } else if (type === "delivered") {
-            searchCondition.is_packed = 1;
-            searchCondition.is_delivered = 1;
-            searchCondition.is_paid = 0;
+            Object.assign(searchCondition, { is_packed: 1, is_delivered: 1, is_paid: 0 });
         } else if (type === "paid") {
-            searchCondition.is_packed = 1;
-            searchCondition.is_delivered = 1;
-            searchCondition.is_paid = 1;
+            Object.assign(searchCondition, { is_packed: 1, is_delivered: 1, is_paid: 1 });
         }
 
-        // Count total records for pagination
+        // ✅ Pagination
         const totalRecords = await SweetOrderDetails.countDocuments(searchCondition);
         const totalPages = Math.ceil(totalRecords / perPage);
 
-        // Fetch records for the current page with the specified limit
-        let result = await SweetOrderDetails.find(searchCondition, {
+        // ✅ Fetch filtered orders
+        const result = await SweetOrderDetails.find(searchCondition, {
             _id: 1,
             name: 1,
             order_no: 1,
             number: 1,
-            sweets:1,
-            received_amount:1,
-            payment_mode:1,
+            sweets: 1,
+            received_amount: 1,
+            payment_mode: 1,
             summary: 1,
             is_packed: 1,
             is_delivered: 1,
@@ -1952,15 +1952,15 @@ app.post('/get_order_based_on_name', async (req, res) => {
         .skip((page - 1) * perPage)
         .limit(perPage);
 
-        // Format each order's data
-        let data = result.map(order => ({
+        // ✅ Format output
+        const data = result.map(order => ({
             _id: order._id,
             name: order.name,
-            received_amount: order.received_amount,
-            payment_mode: order.payment_mode,
             order_no: order.order_no,
             number: order.number,
             sweets: order.sweets,
+            received_amount: order.received_amount,
+            payment_mode: order.payment_mode,
             summary: order.summary,
             is_packed: order.is_packed,
             is_delivered: order.is_delivered,
@@ -1996,6 +1996,7 @@ app.post('/get_order_based_on_name', async (req, res) => {
                 message: "No Order Details Found"
             });
         }
+
     } catch (error) {
         console.error(error);
         res.status(400).json({
@@ -2006,6 +2007,101 @@ app.post('/get_order_based_on_name', async (req, res) => {
         });
     }
 });
+// ✅ Get Retail Orders
+app.post("/get_retail_orders", async (req, res) => {
+  console.log("http://localhost:2025/get_retail_orders");
+
+  const perPage = req.body.perPage || 10;
+  const page = parseInt(req.body.page) || 1;
+
+  try {
+    const totalRecords = await SweetOrderDetails.countDocuments({ retail_order: true });
+    const totalPages = Math.ceil(totalRecords / perPage);
+
+    let result = await SweetOrderDetails.find({ retail_order: true })
+      .skip((page - 1) * perPage)
+      .limit(perPage);
+
+    // Format created dates
+    result = result.map(order => ({
+      ...order.toObject(),
+      created: new Date(order.created).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      }),
+    }));
+
+    res.status(200).json({
+      error: false,
+      code: 200,
+      message: "Retail orders retrieved successfully",
+      total_records: totalRecords,
+      total_pages: totalPages,
+      current_page: page,
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({
+      error: true,
+      code: 400,
+      message: "Something went wrong",
+      data: error,
+    });
+  }
+});
+
+// File: routes/get_all_retail_orders.js
+
+// File: routes/get_all_retail_orders.js
+
+app.get("/get_all_retail_orders", async (req, res) => {
+  console.log("http://localhost:2025/get_all_retail_orders");
+
+  try {
+    // Fetch all retail orders (no pagination)
+    let result = await SweetOrderDetails.find({ retail_order: true });
+
+    // Format created date for all orders
+    result = result.map(order => ({
+      ...order.toObject(),
+      created: new Date(order.created).toLocaleString("en-IN", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+        timeZone: "Asia/Kolkata",
+      }),
+    }));
+
+    res.status(200).json({
+      error: false,
+      code: 200,
+      message: "All retail orders retrieved successfully",
+      total_records: result.length,
+      data: result,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(400).json({
+      error: true,
+      code: 400,
+      message: "Something went wrong",
+      data: error,
+    });
+  }
+});
+
+
 
 
 app.post('/get_order_based_on_order_no', async (req, res) => {
