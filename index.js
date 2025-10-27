@@ -2708,6 +2708,81 @@ app.post('/update_stock', async (req, res) => {
     }
 });
 
+app.get("/get_payment_summary", async (req, res) => {
+  console.log("http://localhost:2025/get_payment_summary");
+
+  try {
+    const allOrders = await SweetOrderDetails.find({ is_deleted: 0 }).lean();
+
+    const summary = {
+      retail: { total_bill: 0, cash_received: 0, online_received: 0, credit: 0 },
+      prebooked: { total_bill: 0, cash_received: 0, online_received: 0, credit: 0 }
+    };
+
+    for (const order of allOrders) {
+      const type = order.retail_order ? "retail" : "prebooked";
+
+      // --- Calculate total bill ---
+      let totalBill = 0;
+      if (order.summary?.totalAmount || order.summary?.total || order.summary?.amount) {
+        totalBill = Number(order.summary.totalAmount || order.summary.total || order.summary.amount || 0);
+      } else if (order.sweets && typeof order.sweets === "object") {
+        // Compute from sweets data
+        for (const sweetName in order.sweets) {
+          const sweet = order.sweets[sweetName];
+          if (!sweet) continue;
+          const price = Number(sweet.price || 0);
+          const qty =
+            (Number(sweet.oneKg || 0) * 1) +
+            (Number(sweet.halfKg || 0) * 0.5) +
+            (Number(sweet.quarterKg || 0) * 0.25) +
+            ((Number(sweet.otherPackings || 0) * Number(sweet.otherWeight || 0)) / 1000) +
+            ((Number(sweet.otherPackings2 || 0) * Number(sweet.otherWeight2 || 0)) / 1000);
+          totalBill += price * qty;
+        }
+      }
+
+      const received = Number(order?.received_amount || 0);
+      const mode = (order?.payment_mode || "").toLowerCase();
+
+      // --- Update totals ---
+      summary[type].total_bill += totalBill;
+
+      if (order.is_paid === 1) {
+        if (mode.includes("cash")) summary[type].cash_received += received;
+        else if (mode.includes("online") || mode.includes("upi")) summary[type].online_received += received;
+        else summary[type].cash_received += received;
+      } else {
+        const pending = totalBill - received;
+        summary[type].credit += pending > 0 ? pending : 0;
+      }
+    }
+
+    // Format nicely
+    const format = obj => Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, Number(v.toFixed(2))]));
+
+    res.status(200).json({
+      error: false,
+      code: 200,
+      message: "Payment summary generated successfully",
+      data: {
+        retail: format(summary.retail),
+        prebooked: format(summary.prebooked)
+      }
+    });
+  } catch (error) {
+    console.error("Payment summary error:", error);
+    res.status(500).json({
+      error: true,
+      code: 500,
+      message: "Something went wrong while generating payment summary",
+      data: error.message
+    });
+  }
+});
+
+
+
 // Function to update the amount based on FE data
 async function updateSweets(data) {
     const { sweets } = data;
